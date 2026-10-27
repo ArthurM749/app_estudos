@@ -1,0 +1,38 @@
+name: app_estudos
+description: "App de estudos gamificado — anotações, projetos, tarefas e pontos, 100% local na versão teste."
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: ^3.5.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+
+  # Banco local (decisão do doc: tudo salvo no dispositivo na versão teste)
+  sqflite: ^2.3.0
+  path: ^1.9.0
+  # sqflite puro só funciona em Android/iOS/macOS. Isso aqui é a
+  # versão para desktop (Windows/Linux), usada automaticamente quando
+  # alguém roda o app direto no PC em vez de no celular — ver
+  # database_helper.dart.
+  sqflite_common_ffi: ^2.3.3
+
+  # Gráficos de pontos por dia/semana na tela de Progresso
+  fl_chart: ^0.69.0
+
+  # Gerenciamento de estado — Provider escolhido como ponto de partida
+  # por ser mais simples pra um grupo de 4 com uma semana de prazo.
+  # Pendência do doc: confirmar com o grupo se fica Provider ou trocam
+  # por Riverpod antes de todo mundo começar a escrever código.
+  provider: ^6.1.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
