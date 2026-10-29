@@ -1,3 +1,5 @@
+import 'package:app_estudos/screens/progresso_screen.dart';
+import 'package:app_estudos/screens/projetos_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -94,19 +96,54 @@ class HomeScreen extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 12),
-              Card(
-                child: ListTile(
-                  leading: const Icon(Icons.date_range),
-                  title: const Text('Esta semana'),
-                  trailing: Text('${appState.pontosSemana} pts'),
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const ProgressoScreen()),
+                  );
+                },
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: const Color.fromARGB(255, 231, 235, 243),
+                    border: Border.all(color: const Color.fromARGB(255, 75, 73, 133), width: 2),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Container(
+                    // seu design atual
+                    child: ListTile(
+                      leading: const Icon(Icons.date_range),
+                      title: const Text('Esta semana',
+                      style: TextStyle(fontWeight: FontWeight.bold)
+                      ),
+                      trailing: Text('${appState.pontosSemana} pts'),
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(height: 12),
-              Card(
-                child: ListTile(
-                  leading: const Icon(Icons.folder_outlined),
-                  title: const Text('Projetos ativos'),
-                  trailing: Text('${appState.projetos.length}'),
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const ProjetosScreen()),
+                  );
+                },
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: const Color.fromARGB(255, 255, 224, 198),
+                    border: Border.all(color: const Color(0xFFC56F29), width: 2),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: ListTile(
+                    leading: const Icon(Icons.folder_outlined),
+                    title: const Text('Projetos ativos',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    trailing: Text('${appState.projetos.length}'),
+                  ),
                 ),
               ),
             ],
