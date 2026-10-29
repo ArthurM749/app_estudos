@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../data/app_state.dart';
 import '../models/conquista.dart';
 import '../widgets/erro_de_carregamento.dart';
+import '../widgets/grafico_pontos_semana.dart';
 
 /// Nível, pontos da semana e conquistas desbloqueadas e bloqueadas.
 ///
@@ -27,6 +28,16 @@ class ProgressoScreen extends StatelessWidget {
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
+              Text(
+                'Pontos na semana',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 8),
+              GraficoPontosSemana(
+                pontosPorDia: appState.pontosPorDia,
+                indiceHoje: DateTime.now().weekday - 1,
+              ),
+              const SizedBox(height: 24),
               Text(
                 'Conquistas',
                 style: Theme.of(context).textTheme.titleMedium,

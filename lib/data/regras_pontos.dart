@@ -10,8 +10,7 @@ class RegrasDePontos {
 
   static const Map<TipoAcao, int> pontosPorAcao = {
     TipoAcao.criarAnotacao: 10,
-    TipoAcao.concluirTarefa: 20,
-    TipoAcao.registrarIdeia: 5,
+    TipoAcao.concluirTarefa: 5,
     TipoAcao.concluirProjeto: 100,
   };
 

@@ -4,21 +4,22 @@ import 'package:provider/provider.dart';
 import '../data/app_state.dart';
 import '../models/item.dart';
 
-/// Editor de anotação/tarefa/ideia: título, conteúdo, seletor de
-/// tipo e a chave público/privado.
+/// Editor de anotação/tarefa: título, conteúdo e a chave
+/// público/privado. Serve tanto para criar quanto para editar — quem
+/// chamar passando [itemExistente] entra no modo edição.
 ///
-/// [projetoId] vem preenchido quando a tela é aberta de dentro de um
-/// projeto; fica nulo quando o item é criado solto. Devolve `true`
-/// via [Navigator.pop] quando algo foi salvo, pra quem chamou saber
-/// que precisa recarregar a lista.
+/// Devolve `true` via [Navigator.pop] quando algo foi salvo, pra quem
+/// chamou saber que precisa recarregar a lista.
 class AnotacaoEditorScreen extends StatefulWidget {
   final int? projetoId;
   final TipoItem tipoInicial;
+  final Item? itemExistente;
 
   const AnotacaoEditorScreen({
     super.key,
     this.projetoId,
     this.tipoInicial = TipoItem.anotacao,
+    this.itemExistente,
   });
 
   @override
@@ -26,11 +27,16 @@ class AnotacaoEditorScreen extends StatefulWidget {
 }
 
 class _AnotacaoEditorScreenState extends State<AnotacaoEditorScreen> {
-  late TipoItem _tipo = widget.tipoInicial;
-  Visibilidade _visibilidade = Visibilidade.privada;
-  final _tituloController = TextEditingController();
-  final _conteudoController = TextEditingController();
+  late TipoItem _tipo = widget.itemExistente?.tipo ?? widget.tipoInicial;
+  late Visibilidade _visibilidade =
+      widget.itemExistente?.visibilidade ?? Visibilidade.privada;
+  late final _tituloController =
+      TextEditingController(text: widget.itemExistente?.titulo ?? '');
+  late final _conteudoController =
+      TextEditingController(text: widget.itemExistente?.conteudo ?? '');
   bool _salvando = false;
+
+  bool get _editando => widget.itemExistente != null;
 
   @override
   void dispose() {
@@ -44,27 +50,33 @@ class _AnotacaoEditorScreenState extends State<AnotacaoEditorScreen> {
     if (titulo.isEmpty || _salvando) return;
 
     setState(() => _salvando = true);
+    final appState = context.read<AppState>();
 
-    await context.read<AppState>().criarItem(
-          projetoId: widget.projetoId,
-          tipo: _tipo,
-          titulo: titulo,
-          conteudo: _conteudoController.text.trim(),
-          visibilidade: _visibilidade,
-        );
+    if (_editando) {
+      final atualizado = widget.itemExistente!.copyWith(
+        titulo: titulo,
+        conteudo: _conteudoController.text.trim(),
+        visibilidade: _visibilidade,
+      );
+      await appState.atualizarItem(atualizado);
+    } else {
+      await appState.criarItem(
+        projetoId: widget.projetoId,
+        tipo: _tipo,
+        titulo: titulo,
+        conteudo: _conteudoController.text.trim(),
+        visibilidade: _visibilidade,
+      );
+    }
 
     if (mounted) Navigator.of(context).pop(true);
   }
 
   String get _tituloDaTela {
-    switch (_tipo) {
-      case TipoItem.anotacao:
-        return 'Nova anotação';
-      case TipoItem.tarefa:
-        return 'Nova tarefa';
-      case TipoItem.ideia:
-        return 'Nova ideia';
+    if (_editando) {
+      return _tipo == TipoItem.tarefa ? 'Editar tarefa' : 'Editar anotação';
     }
+    return _tipo == TipoItem.tarefa ? 'Nova tarefa' : 'Nova anotação';
   }
 
   @override
@@ -90,18 +102,21 @@ class _AnotacaoEditorScreenState extends State<AnotacaoEditorScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            SegmentedButton<TipoItem>(
-              segments: const [
-                ButtonSegment(value: TipoItem.anotacao, label: Text('Anotação')),
-                ButtonSegment(value: TipoItem.tarefa, label: Text('Tarefa')),
-                ButtonSegment(value: TipoItem.ideia, label: Text('Ideia')),
-              ],
-              selected: {_tipo},
-              onSelectionChanged: (selecionado) {
-                setState(() => _tipo = selecionado.first);
-              },
-            ),
-            const SizedBox(height: 16),
+            // O tipo só é escolhido na criação — editar não troca
+            // anotação por tarefa, pra não complicar o cálculo de
+            // progresso do projeto.
+            if (!_editando)
+              SegmentedButton<TipoItem>(
+                segments: const [
+                  ButtonSegment(value: TipoItem.anotacao, label: Text('Anotação')),
+                  ButtonSegment(value: TipoItem.tarefa, label: Text('Tarefa')),
+                ],
+                selected: {_tipo},
+                onSelectionChanged: (selecionado) {
+                  setState(() => _tipo = selecionado.first);
+                },
+              ),
+            if (!_editando) const SizedBox(height: 16),
             TextField(
               controller: _tituloController,
               autofocus: true,

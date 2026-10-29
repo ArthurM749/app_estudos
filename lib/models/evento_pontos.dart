@@ -6,7 +6,6 @@
 enum TipoAcao {
   criarAnotacao,
   concluirTarefa,
-  registrarIdeia,
   concluirProjeto,
 }
 

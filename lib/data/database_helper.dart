@@ -44,9 +44,31 @@ class DatabaseHelper {
     final path = join(await getDatabasesPath(), 'app_estudos.db');
     return openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: _onCreate,
+      onOpen: (db) async => garantirTabelaPerfil(db),
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          await garantirTabelaPerfil(db);
+        }
+      },
     );
+  }
+
+  Future<void> garantirTabelaPerfil(Database db) async {
+    final jaExiste = await db.rawQuery(
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'perfil'",
+    );
+    if (jaExiste.isNotEmpty) return;
+
+    await db.execute('''
+      CREATE TABLE perfil (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        nome TEXT,
+        email TEXT,
+        pulou INTEGER NOT NULL DEFAULT 0
+      )
+    ''');
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -93,6 +115,12 @@ class DatabaseHelper {
     ''');
 
     await db.execute('CREATE INDEX idx_itens_projeto ON itens (projeto_id)');
+
+    // Linha única (id sempre 1): guarda se a pessoa criou um perfil
+    // local (nome + email) ou escolheu continuar sem conta. Não é
+    // autenticação de verdade — isso só existe pra já deixar pronto
+    // pra quando a fase de sincronização ligar de fato numa conta.
+    await garantirTabelaPerfil(db);
   }
 
   // ---------------------------------------------------------------
@@ -101,8 +129,7 @@ class DatabaseHelper {
 
   Future<int> inserirProjeto(Projeto projeto) async {
     final db = await database;
-    return db.insert('projetos', projeto.toMap()
-      ..remove('id'));
+    return db.insert('projetos', projeto.toMap()..remove('id'));
   }
 
   Future<List<Projeto>> listarProjetos({bool incluirArquivados = false}) async {
@@ -132,7 +159,7 @@ class DatabaseHelper {
   }
 
   // ---------------------------------------------------------------
-  // Itens (anotações, tarefas, ideias)
+  // Itens (anotações, tarefas)
   // ---------------------------------------------------------------
 
   Future<int> inserirItem(Item item) async {
@@ -183,17 +210,44 @@ class DatabaseHelper {
   Future<int> progressoPorTarefas(int projetoId) async {
     final db = await database;
     final total = Sqflite.firstIntValue(await db.rawQuery(
-      "SELECT COUNT(*) FROM itens WHERE projeto_id = ? AND tipo = 'tarefa'",
-      [projetoId],
-    )) ?? 0;
+          "SELECT COUNT(*) FROM itens WHERE projeto_id = ? AND tipo = 'tarefa'",
+          [projetoId],
+        )) ??
+        0;
     if (total == 0) return 0;
 
     final concluidas = Sqflite.firstIntValue(await db.rawQuery(
-      "SELECT COUNT(*) FROM itens WHERE projeto_id = ? AND tipo = 'tarefa' AND concluido = 1",
-      [projetoId],
-    )) ?? 0;
+          "SELECT COUNT(*) FROM itens WHERE projeto_id = ? AND tipo = 'tarefa' AND concluido = 1",
+          [projetoId],
+        )) ??
+        0;
 
     return ((concluidas / total) * 100).round();
+  }
+
+  // ---------------------------------------------------------------
+  // Perfil local (opcional)
+  // ---------------------------------------------------------------
+
+  Future<void> salvarPerfil({
+    String? nome,
+    String? email,
+    required bool pulou,
+  }) async {
+    final db = await database;
+    await db.insert(
+      'perfil',
+      {'id': 1, 'nome': nome, 'email': email, 'pulou': pulou ? 1 : 0},
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  /// `null` quando a pessoa ainda não decidiu (nunca viu a tela de
+  /// criar perfil / continuar sem conta).
+  Future<Map<String, Object?>?> obterPerfil() async {
+    final db = await database;
+    final resultados = await db.query('perfil', where: 'id = 1', limit: 1);
+    return resultados.isEmpty ? null : resultados.first;
   }
 
   // ---------------------------------------------------------------
@@ -223,6 +277,21 @@ class DatabaseHelper {
         await db.rawQuery('SELECT SUM(pontos) as total FROM eventos_pontos');
     final total = resultado.first['total'];
     return (total as int?) ?? 0;
+  }
+
+  /// 7 valores (pontos ganhos naquele dia), de segunda a domingo da
+  /// semana de [segunda].
+  Future<List<int>> pontosPorDiaDaSemana(DateTime segunda) async {
+    final resultados = <int>[];
+    for (var i = 0; i < 7; i++) {
+      final dia = segunda.add(Duration(days: i));
+      final inicio = DateTime(dia.year, dia.month, dia.day);
+      final fim = inicio
+          .add(const Duration(days: 1))
+          .subtract(const Duration(milliseconds: 1));
+      resultados.add(await somaPontosEntre(inicio, fim));
+    }
+    return resultados;
   }
 
   // ---------------------------------------------------------------

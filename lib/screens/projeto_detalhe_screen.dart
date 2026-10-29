@@ -7,10 +7,10 @@ import '../models/item.dart';
 import '../models/projeto.dart';
 import 'anotacao_editor_screen.dart';
 
-const _tiposPorAba = [TipoItem.anotacao, TipoItem.tarefa, TipoItem.ideia];
+const _tiposPorAba = [TipoItem.anotacao, TipoItem.tarefa];
 
-/// Detalhe de um projeto: abas internas de Anotações, Tarefas e
-/// Ideias, mais o controle de progresso (manual ou por tarefas).
+/// Detalhe de um projeto: abas internas de Anotações e Tarefas, mais
+/// o controle de progresso (manual ou por tarefas).
 class ProjetoDetalheScreen extends StatefulWidget {
   final Projeto projeto;
 
@@ -53,7 +53,7 @@ class _ProjetoDetalheScreenState extends State<ProjetoDetalheScreen> {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 3,
+      length: 2,
       child: Builder(
         builder: (context) {
           final abaAtual = DefaultTabController.of(context);
@@ -64,7 +64,6 @@ class _ProjetoDetalheScreenState extends State<ProjetoDetalheScreen> {
                 tabs: [
                   Tab(text: 'Anotações'),
                   Tab(text: 'Tarefas'),
-                  Tab(text: 'Ideias'),
                 ],
               ),
             ),
@@ -73,7 +72,7 @@ class _ProjetoDetalheScreenState extends State<ProjetoDetalheScreen> {
                 _BarraDeProgresso(projeto: widget.projeto),
                 Expanded(
                   child: TabBarView(
-                    children: List.generate(3, (indice) {
+                    children: List.generate(2, (indice) {
                       return _ListaDeItens(
                         futuro: _futurosPorAba[indice],
                         tipo: _tiposPorAba[indice],
@@ -176,41 +175,100 @@ class _ListaDeItens extends StatelessWidget {
           padding: const EdgeInsets.all(8),
           itemCount: itens.length,
           itemBuilder: (context, indice) {
-            final item = itens[indice];
-            if (tipo == TipoItem.tarefa) {
-              return CheckboxListTile(
-                title: Text(
-                  item.titulo,
-                  style: item.concluido
-                      ? const TextStyle(decoration: TextDecoration.lineThrough)
-                      : null,
-                ),
-                value: item.concluido,
-                onChanged: (_) async {
-                  await context.read<AppState>().alternarConclusao(item);
-                  aoAlterar();
-                },
-              );
-            }
-            return ListTile(
-              leading: Icon(
-                item.visibilidade == Visibilidade.publica
-                    ? Icons.public
-                    : Icons.lock_outline,
-                size: 18,
-              ),
-              title: Text(item.titulo),
-              subtitle: item.conteudo.isEmpty
-                  ? null
-                  : Text(
-                      item.conteudo,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-            );
+            return _ItemTile(item: itens[indice], aoAlterar: aoAlterar);
           },
         );
       },
+    );
+  }
+}
+
+/// Uma linha de anotação ou tarefa, com os botões de editar e
+/// excluir. Tarefas também mostram o checkbox de concluída.
+class _ItemTile extends StatelessWidget {
+  final Item item;
+  final VoidCallback aoAlterar;
+
+  const _ItemTile({required this.item, required this.aoAlterar});
+
+  Future<void> _editar(BuildContext context) async {
+    final editou = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => AnotacaoEditorScreen(
+          projetoId: item.projetoId,
+          tipoInicial: item.tipo,
+          itemExistente: item,
+        ),
+      ),
+    );
+    if (editou == true) aoAlterar();
+  }
+
+  Future<void> _excluir(BuildContext context) async {
+    final confirmou = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Excluir?'),
+        content: Text('Isso vai apagar "${item.titulo}" e não pode ser desfeito.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Excluir'),
+          ),
+        ],
+      ),
+    );
+    if (confirmou == true) {
+      await context.read<AppState>().excluirItem(item);
+      aoAlterar();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ehTarefa = item.tipo == TipoItem.tarefa;
+
+    return ListTile(
+      leading: ehTarefa
+          ? Checkbox(
+              value: item.concluido,
+              onChanged: (_) async {
+                await context.read<AppState>().alternarConclusao(item);
+                aoAlterar();
+              },
+            )
+          : Icon(
+              item.visibilidade == Visibilidade.publica
+                  ? Icons.public
+                  : Icons.lock_outline,
+              size: 20,
+            ),
+      title: Text(
+        item.titulo,
+        style: (ehTarefa && item.concluido)
+            ? const TextStyle(decoration: TextDecoration.lineThrough)
+            : null,
+      ),
+      subtitle: item.conteudo.isEmpty
+          ? null
+          : Text(item.conteudo, maxLines: 2, overflow: TextOverflow.ellipsis),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            icon: const Icon(Icons.edit_outlined, size: 20),
+            onPressed: () => _editar(context),
+          ),
+          IconButton(
+            icon: const Icon(Icons.delete_outline, size: 20),
+            onPressed: () => _excluir(context),
+          ),
+        ],
+      ),
     );
   }
 }

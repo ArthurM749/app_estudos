@@ -30,6 +30,13 @@ class HomeScreen extends StatelessWidget {
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
+              if (appState.nomeUsuario != null) ...[
+                Text(
+                  'Olá, ${appState.nomeUsuario}!',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 12),
+              ],
               Card(
                 child: Padding(
                   padding: const EdgeInsets.all(16),

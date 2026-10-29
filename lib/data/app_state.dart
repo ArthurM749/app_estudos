@@ -9,7 +9,7 @@ import 'regras_pontos.dart';
 
 /// Estado global do app: projetos, pontos, nível e conquistas.
 ///
-/// Os itens (anotações/tarefas/ideias) de cada projeto NÃO ficam
+/// Os itens (anotações/tarefas) de cada projeto NÃO ficam
 /// cacheados aqui — a tela de detalhe do projeto carrega direto do
 /// banco (são poucos registros, não compensa duplicar estado). Este
 /// estado cuida só do que é usado em várias telas ao mesmo tempo:
@@ -31,6 +31,18 @@ class AppState extends ChangeNotifier {
 
   Set<String> conquistasDesbloqueadas = {};
 
+  /// Pontos ganhos em cada dia da semana atual, segunda (índice 0) a
+  /// domingo (índice 6). Alimenta o gráfico de colunas da tela de
+  /// Progresso.
+  List<int> pontosPorDia = List.filled(7, 0);
+
+  /// `true` assim que a pessoa já decidiu entre criar perfil ou
+  /// continuar sem conta (nessa sessão ou numa anterior). Enquanto
+  /// for `false`, o app mostra a tela de criar perfil antes de tudo.
+  bool onboardingConcluido = false;
+  String? nomeUsuario;
+  String? emailUsuario;
+
   bool carregando = true;
 
   /// Mensagem de erro, se o carregamento falhou. A tela mostra isso
@@ -44,6 +56,13 @@ class AppState extends ChangeNotifier {
     notifyListeners();
 
     try {
+      final perfil = await _db.obterPerfil();
+      if (perfil != null) {
+        onboardingConcluido = true;
+        nomeUsuario = perfil['nome'] as String?;
+        emailUsuario = perfil['email'] as String?;
+      }
+
       projetos = await _db.listarProjetos();
       for (final projeto in projetos) {
         if (projeto.id == null) continue;
@@ -55,6 +74,24 @@ class AppState extends ChangeNotifier {
     }
 
     carregando = false;
+    notifyListeners();
+  }
+
+  // ---------------------------------------------------------------
+  // Perfil local (opcional)
+  // ---------------------------------------------------------------
+
+  Future<void> criarPerfil({required String nome, required String email}) async {
+    await _db.salvarPerfil(nome: nome, email: email, pulou: false);
+    nomeUsuario = nome;
+    emailUsuario = email;
+    onboardingConcluido = true;
+    notifyListeners();
+  }
+
+  Future<void> continuarSemConta() async {
+    await _db.salvarPerfil(pulou: true);
+    onboardingConcluido = true;
     notifyListeners();
   }
 
@@ -80,6 +117,10 @@ class AppState extends ChangeNotifier {
     pontosSemana = await _db.somaPontosEntre(inicioSemana, fimHoje);
     pontosTotais = await _db.pontosTotais();
     nivel = RegrasDePontos.nivelPara(pontosTotais);
+
+    // weekday: segunda = 1 ... domingo = 7 → índice 0 = segunda.
+    final segunda = inicioHoje.subtract(Duration(days: agora.weekday - 1));
+    pontosPorDia = await _db.pontosPorDiaDaSemana(segunda);
 
     final desbloqueadas = await _db.listarConquistasDesbloqueadas();
     conquistasDesbloqueadas = desbloqueadas.map((c) => c.conquistaId).toSet();
@@ -170,7 +211,7 @@ class AppState extends ChangeNotifier {
   }
 
   // ---------------------------------------------------------------
-  // Itens (anotações, tarefas, ideias)
+  // Itens (anotações, tarefas)
   // ---------------------------------------------------------------
 
   /// Cria um item e já registra os pontos da ação, quando aplicável.
@@ -196,8 +237,6 @@ class AppState extends ChangeNotifier {
 
     if (tipo == TipoItem.anotacao) {
       await _registrarPontos(TipoAcao.criarAnotacao);
-    } else if (tipo == TipoItem.ideia) {
-      await _registrarPontos(TipoAcao.registrarIdeia);
     }
 
     await _recarregarPontosEConquistas();
@@ -206,6 +245,25 @@ class AppState extends ChangeNotifier {
     }
     notifyListeners();
     return criado;
+  }
+
+  /// Atualiza título/conteúdo/visibilidade de um item já existente.
+  /// O tipo (anotação ou tarefa) não muda numa edição — é definido
+  /// só na criação — então isso nunca precisa recalcular pontos ou
+  /// progresso.
+  Future<void> atualizarItem(Item item) async {
+    await _db.atualizarItem(item);
+    notifyListeners();
+  }
+
+  Future<void> excluirItem(Item item) async {
+    if (item.id == null) return;
+    await _db.excluirItem(item.id!);
+
+    if (item.projetoId != null) {
+      await _recalcularProgressoPorTarefas(item.projetoId!);
+    }
+    notifyListeners();
   }
 
   /// Marca/desmarca uma tarefa como concluída. Pontua só ao marcar

@@ -8,8 +8,8 @@ enum ModoProgresso {
   porTarefas,
 }
 
-/// Uma pasta de estudo: agrupa anotações, tarefas e ideias sobre um
-/// mesmo assunto (ex.: "Estruturas de Dados", "TCC").
+/// Uma pasta de estudo: agrupa anotações e tarefas sobre um mesmo
+/// assunto (ex.: "Estruturas de Dados", "TCC").
 class Projeto {
   final int? id;
   final String nome;
