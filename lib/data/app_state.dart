@@ -7,22 +7,13 @@ import '../models/projeto.dart';
 import 'database_helper.dart';
 import 'regras_pontos.dart';
 
-/// Estado global do app: projetos, pontos, nível e conquistas.
-///
-/// Os itens (anotações/tarefas) de cada projeto NÃO ficam
-/// cacheados aqui — a tela de detalhe do projeto carrega direto do
-/// banco (são poucos registros, não compensa duplicar estado). Este
-/// estado cuida só do que é usado em várias telas ao mesmo tempo:
-/// lista de projetos, pontuação e conquistas.
 class AppState extends ChangeNotifier {
   final DatabaseHelper _db = DatabaseHelper.instance;
 
   List<Projeto> projetos = [];
-
-  /// projetoId -> progresso de 0 a 100 (já resolvido, seja manual ou
-  /// calculado por tarefas).
   Map<int, int> progressoPorProjeto = {};
 
+  int diasSequencia = 0;
   int pontosHoje = 0;
   int pontosOntem = 0;
   int pontosSemana = 0;
@@ -30,24 +21,13 @@ class AppState extends ChangeNotifier {
   int nivel = 1;
 
   Set<String> conquistasDesbloqueadas = {};
-
-  /// Pontos ganhos em cada dia da semana atual, segunda (índice 0) a
-  /// domingo (índice 6). Alimenta o gráfico de colunas da tela de
-  /// Progresso.
   List<int> pontosPorDia = List.filled(7, 0);
 
-  /// `true` assim que a pessoa já decidiu entre criar perfil ou
-  /// continuar sem conta (nessa sessão ou numa anterior). Enquanto
-  /// for `false`, o app mostra a tela de criar perfil antes de tudo.
   bool onboardingConcluido = false;
   String? nomeUsuario;
   String? emailUsuario;
 
   bool carregando = true;
-
-  /// Mensagem de erro, se o carregamento falhou. A tela mostra isso
-  /// em vez de ficar girando pra sempre quando algo dá errado (ex.:
-  /// problema ao abrir o banco local).
   String? erro;
 
   Future<void> carregar() async {
@@ -78,7 +58,7 @@ class AppState extends ChangeNotifier {
   }
 
   // ---------------------------------------------------------------
-  // Perfil local (opcional)
+  // Perfil
   // ---------------------------------------------------------------
 
   Future<void> criarPerfil({required String nome, required String email}) async {
@@ -102,12 +82,14 @@ class AppState extends ChangeNotifier {
     return _db.progressoPorTarefas(projeto.id!);
   }
 
+  // ---------------------------------------------------------------
+  // Pontos + Sequência
+  // ---------------------------------------------------------------
+
   Future<void> _recarregarPontosEConquistas() async {
     final agora = DateTime.now();
     final inicioHoje = DateTime(agora.year, agora.month, agora.day);
-    final fimHoje = inicioHoje
-        .add(const Duration(days: 1))
-        .subtract(const Duration(milliseconds: 1));
+    final fimHoje = inicioHoje.add(const Duration(days: 1)).subtract(const Duration(milliseconds: 1));
     final inicioOntem = inicioHoje.subtract(const Duration(days: 1));
     final fimOntem = inicioHoje.subtract(const Duration(milliseconds: 1));
     final inicioSemana = inicioHoje.subtract(const Duration(days: 6));
@@ -118,18 +100,44 @@ class AppState extends ChangeNotifier {
     pontosTotais = await _db.pontosTotais();
     nivel = RegrasDePontos.nivelPara(pontosTotais);
 
-    // weekday: segunda = 1 ... domingo = 7 → índice 0 = segunda.
+    // Sequência de dias
+    diasSequencia = await _calcularSequencia();
+
     final segunda = inicioHoje.subtract(Duration(days: agora.weekday - 1));
     pontosPorDia = await _db.pontosPorDiaDaSemana(segunda);
 
     final desbloqueadas = await _db.listarConquistasDesbloqueadas();
     conquistasDesbloqueadas = desbloqueadas.map((c) => c.conquistaId).toSet();
 
-    if (pontosTotais >= 500 &&
-        !conquistasDesbloqueadas.contains('estudioso')) {
+    if (pontosTotais >= 500 && !conquistasDesbloqueadas.contains('estudioso')) {
       await _db.desbloquearConquista('estudioso');
       conquistasDesbloqueadas.add('estudioso');
     }
+  }
+
+  /// Calcula quantos dias seguidos o usuário fez pontos (olhando para trás)
+  Future<int> _calcularSequencia() async {
+    int sequencia = 0;
+    DateTime dia = DateTime.now();
+
+    while (true) {
+      final inicioDia = DateTime(dia.year, dia.month, dia.day);
+      final fimDia = inicioDia.add(const Duration(days: 1)).subtract(const Duration(milliseconds: 1));
+
+      final pontosDoDia = await _db.somaPontosEntre(inicioDia, fimDia);
+
+      if (pontosDoDia > 0) {
+        sequencia++;
+        dia = dia.subtract(const Duration(days: 1));
+      } else {
+        break;
+      }
+
+      // Segurança: não deixa loop infinito
+      if (sequencia > 365) break;
+    }
+
+    return sequencia;
   }
 
   Future<void> _registrarPontos(TipoAcao tipo) async {
@@ -169,8 +177,6 @@ class AppState extends ChangeNotifier {
     return criado;
   }
 
-  /// Usado quando o projeto está no modo de progresso manual: o
-  /// usuário arrasta a barrinha e define a porcentagem na mão.
   Future<void> definirProgressoManual(int projetoId, int valor) async {
     final indice = projetos.indexWhere((p) => p.id == projetoId);
     if (indice == -1) return;
@@ -183,9 +189,6 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Chamado depois de criar/concluir um item de um projeto no modo
-  /// "por tarefas", pra recalcular a % e checar se o projeto bateu
-  /// 100%.
   Future<void> _recalcularProgressoPorTarefas(int projetoId) async {
     final indice = projetos.indexWhere((p) => p.id == projetoId);
     if (indice == -1) return;
@@ -211,12 +214,9 @@ class AppState extends ChangeNotifier {
   }
 
   // ---------------------------------------------------------------
-  // Itens (anotações, tarefas)
+  // Itens
   // ---------------------------------------------------------------
 
-  /// Cria um item e já registra os pontos da ação, quando aplicável.
-  /// Tarefa não pontua ao ser criada — pontua ao ser concluída (ver
-  /// [alternarConclusao]).
   Future<Item> criarItem({
     int? projetoId,
     required TipoItem tipo,
@@ -247,10 +247,6 @@ class AppState extends ChangeNotifier {
     return criado;
   }
 
-  /// Atualiza título/conteúdo/visibilidade de um item já existente.
-  /// O tipo (anotação ou tarefa) não muda numa edição — é definido
-  /// só na criação — então isso nunca precisa recalcular pontos ou
-  /// progresso.
   Future<void> atualizarItem(Item item) async {
     await _db.atualizarItem(item);
     notifyListeners();
@@ -266,8 +262,6 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Marca/desmarca uma tarefa como concluída. Pontua só ao marcar
-  /// como concluída (nunca ao desmarcar).
   Future<void> alternarConclusao(Item item) async {
     final atualizado = item.copyWith(concluido: !item.concluido);
     await _db.atualizarItem(atualizado);
