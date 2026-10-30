@@ -6,9 +6,18 @@ import 'package:provider/provider.dart';
 import '../data/app_state.dart';
 import '../data/regras_pontos.dart';
 import '../widgets/erro_de_carregamento.dart';
+import '../widgets/grafico_pontos_semana.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  // 0 = Semana | 1 = Mês | 2 = Tudo
+  int _filtroSelecionado = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -26,6 +35,14 @@ class HomeScreen extends StatelessWidget {
           final faltamParaProximoNivel =
               RegrasDePontos.pontosParaProximoNivel(appState.nivel);
           final variacao = appState.pontosHoje - appState.pontosOntem;
+          final indiceHoje = DateTime.now().weekday - 1;
+
+          // Título do gráfico muda conforme o filtro
+          final tituloGrafico = switch (_filtroSelecionado) {
+            0 => 'Pontos da semana',
+            1 => 'Pontos do mês',
+            _ => 'Pontos totais',
+          };
 
           return ListView(
             padding: const EdgeInsets.all(16),
@@ -38,13 +55,13 @@ class HomeScreen extends StatelessWidget {
                 const SizedBox(height: 12),
               ],
 
-              // ===== CARD DE SEQUÊNCIA + NÍVEL =====
+              // ===== CARD SEQUÊNCIA + NÍVEL =====
               Card(
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Row(
                     children: [
-                      // Lado esquerdo - Sequência
+                      // Sequência
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -56,11 +73,8 @@ class HomeScreen extends StatelessWidget {
                             const SizedBox(height: 4),
                             Row(
                               children: [
-                                const Icon(
-                                  Icons.local_fire_department,
-                                  color: Colors.orange,
-                                  size: 22,
-                                ),
+                                const Icon(Icons.local_fire_department,
+                                    color: Colors.orange, size: 22),
                                 const SizedBox(width: 6),
                                 Text(
                                   '${appState.diasSequencia} dias',
@@ -75,7 +89,6 @@ class HomeScreen extends StatelessWidget {
                         ),
                       ),
 
-                      // Divisor
                       Container(
                         height: 45,
                         width: 1,
@@ -83,7 +96,7 @@ class HomeScreen extends StatelessWidget {
                         margin: const EdgeInsets.symmetric(horizontal: 12),
                       ),
 
-                      // Lado direito - Nível
+                      // Nível
                       Expanded(
                         flex: 2,
                         child: Column(
@@ -94,8 +107,12 @@ class HomeScreen extends StatelessWidget {
                               style: Theme.of(context).textTheme.headlineSmall,
                             ),
                             const SizedBox(height: 4),
-                            Text('${appState.pontosTotais} pontos totais'),
-                            
+                            Text('${appState.pontosTotais} pontos no total'),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Faltam $faltamParaProximoNivel pontos para o próximo nível',
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
                           ],
                         ),
                       ),
@@ -104,7 +121,59 @@ class HomeScreen extends StatelessWidget {
                 ),
               ),
 
+              const SizedBox(height: 16),
+
+              // ===== BOTÕES DE FILTRO =====
+              Row(
+                children: [
+                  _BotaoFiltro(
+                    texto: 'Semana',
+                    selecionado: _filtroSelecionado == 0,
+                    onTap: () => setState(() => _filtroSelecionado = 0),
+                  ),
+                  const SizedBox(width: 8),
+                  _BotaoFiltro(
+                    texto: 'Mês',
+                    selecionado: _filtroSelecionado == 1,
+                    onTap: () => setState(() => _filtroSelecionado = 1),
+                  ),
+                  const SizedBox(width: 8),
+                  _BotaoFiltro(
+                    texto: 'Tudo',
+                    selecionado: _filtroSelecionado == 2,
+                    onTap: () => setState(() => _filtroSelecionado = 2),
+                  ),
+                ],
+              ),
+
               const SizedBox(height: 12),
+
+              // ===== GRÁFICO =====
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 16, 12, 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        tituloGrafico,
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Por enquanto todos os filtros usam os dados da semana
+                      // (quando você tiver dados de mês/tudo no AppState, é só trocar aqui)
+                      GraficoPontosSemana(
+                        pontosPorDia: appState.pontosPorDia,
+                        indiceHoje: indiceHoje,
+                        altura: 140,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 16),
 
               // ===== HOJE / ONTEM =====
               Row(
@@ -145,16 +214,14 @@ class HomeScreen extends StatelessWidget {
                 ],
               ),
 
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
 
               // ===== ESTA SEMANA =====
               GestureDetector(
                 onTap: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(
-                      builder: (context) => const ProgressoScreen(),
-                    ),
+                    MaterialPageRoute(builder: (_) => const ProgressoScreen()),
                   );
                 },
                 child: Container(
@@ -166,24 +233,19 @@ class HomeScreen extends StatelessWidget {
                     ),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const ListTile(
-                    leading: Icon(Icons.date_range),
-                    title: Text(
+                  child: ListTile(
+                    leading: const Icon(Icons.date_range),
+                    title: const Text(
                       'Esta semana',
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                     trailing: Text(
-                      // Você pode colocar o valor aqui se quiser
-                      '',
-                      style: TextStyle(fontWeight: FontWeight.bold),
+                      '${appState.pontosSemana} pts',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
                 ),
               ),
-
-              // Correção do trailing (pontos da semana)
-              // Melhor forma:
-              // trailing: Text('${appState.pontosSemana} pts', ...)
 
               const SizedBox(height: 12),
 
@@ -192,9 +254,7 @@ class HomeScreen extends StatelessWidget {
                 onTap: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(
-                      builder: (context) => const ProjetosScreen(),
-                    ),
+                    MaterialPageRoute(builder: (_) => const ProjetosScreen()),
                   );
                 },
                 child: Container(
@@ -222,6 +282,46 @@ class HomeScreen extends StatelessWidget {
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+class _BotaoFiltro extends StatelessWidget {
+  final String texto;
+  final bool selecionado;
+  final VoidCallback onTap;
+
+  const _BotaoFiltro({
+    required this.texto,
+    required this.selecionado,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: selecionado
+                ? Theme.of(context).colorScheme.primary
+                : Colors.grey.shade200,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Center(
+            child: Text(
+              texto,
+              style: TextStyle(
+                color: selecionado ? Colors.white : Colors.black87,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

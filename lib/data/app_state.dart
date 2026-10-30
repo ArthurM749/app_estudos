@@ -276,4 +276,23 @@ class AppState extends ChangeNotifier {
     }
     notifyListeners();
   }
+
+
+  // Coloque dentro da classe AppState
+
+Future<void> atualizarProjeto(Projeto projeto) async {
+  await _db.atualizarProjeto(projeto);
+  final indice = projetos.indexWhere((p) => p.id == projeto.id);
+  if (indice != -1) {
+    projetos[indice] = projeto;
+    notifyListeners();
+  }
+}
+
+Future<void> excluirProjeto(int projetoId) async {
+  await _db.excluirProjeto(projetoId);
+  projetos.removeWhere((p) => p.id == projetoId);
+  progressoPorProjeto.remove(projetoId);
+  notifyListeners();
+}
 }

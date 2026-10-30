@@ -1,89 +1,72 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
-const _diasDaSemana = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
-
-/// Gráfico de colunas com os pontos ganhos em cada dia da semana
-/// atual (segunda a domingo).
-///
-/// [pontosPorDia] precisa ter exatamente 7 valores, na mesma ordem
-/// dos dias (índice 0 = segunda). [indiceHoje] destaca a coluna do
-/// dia de hoje.
 class GraficoPontosSemana extends StatelessWidget {
   final List<int> pontosPorDia;
   final int indiceHoje;
+  final double altura;
 
   const GraficoPontosSemana({
     super.key,
     required this.pontosPorDia,
     required this.indiceHoje,
+    this.altura = 180, // altura padrão
   });
 
   @override
   Widget build(BuildContext context) {
-    final cores = Theme.of(context).colorScheme;
-    final maiorValor =
-        pontosPorDia.fold<int>(0, (maior, v) => v > maior ? v : maior);
-    final double teto = maiorValor == 0 ? 10.0 : maiorValor * 1.25;
+    final maxY = (pontosPorDia.reduce((a, b) => a > b ? a : b) + 20).toDouble();
 
     return SizedBox(
-      height: 180,
+      height: altura,
       child: BarChart(
         BarChartData(
-          maxY: teto,
           alignment: BarChartAlignment.spaceAround,
-          gridData: const FlGridData(show: false),
-          borderData: FlBorderData(show: false),
-          barTouchData: BarTouchData(
-            touchTooltipData: BarTouchTooltipData(
-              getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                return BarTooltipItem(
-                  '${rod.toY.round()} pts',
-                  const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                );
-              },
-            ),
-          ),
+          maxY: maxY < 50 ? 50 : maxY,
+          barTouchData: BarTouchData(enabled: false),
           titlesData: FlTitlesData(
-            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            leftTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: true, reservedSize: 28),
-            ),
+            show: true,
             bottomTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
-                getTitlesWidget: (valor, meta) {
-                  final indice = valor.toInt();
-                  if (indice < 0 || indice >= _diasDaSemana.length) {
-                    return const SizedBox.shrink();
-                  }
-                  final ehHoje = indice == indiceHoje;
+                getTitlesWidget: (value, meta) {
+                  const dias = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
                   return Padding(
                     padding: const EdgeInsets.only(top: 6),
                     child: Text(
-                      _diasDaSemana[indice],
+                      dias[value.toInt()],
                       style: TextStyle(
-                        fontWeight: ehHoje ? FontWeight.bold : FontWeight.normal,
-                        color: ehHoje ? cores.primary : null,
+                        fontSize: 11,
+                        fontWeight: value.toInt() == indiceHoje
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                        color: value.toInt() == indiceHoje
+                            ? Theme.of(context).colorScheme.primary
+                            : Colors.grey.shade600,
                       ),
                     ),
                   );
                 },
               ),
             ),
+            leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
           ),
-          barGroups: List.generate(7, (indice) {
-            final valor = pontosPorDia[indice].toDouble();
-            final ehHoje = indice == indiceHoje;
+          gridData: const FlGridData(show: false),
+          borderData: FlBorderData(show: false),
+          barGroups: List.generate(7, (i) {
+            final isHoje = i == indiceHoje;
             return BarChartGroupData(
-              x: indice,
+              x: i,
               barRods: [
                 BarChartRodData(
-                  toY: valor,
-                  width: 20,
-                  borderRadius: BorderRadius.circular(4),
-                  color: ehHoje ? cores.primary : cores.primary.withOpacity(0.35),
+                  toY: pontosPorDia[i].toDouble(),
+                  width: 18,
+                  borderRadius: BorderRadius.circular(6),
+                  color: isHoje
+                      ? Theme.of(context).colorScheme.primary
+                      : Colors.grey.shade400,
                 ),
               ],
             );
