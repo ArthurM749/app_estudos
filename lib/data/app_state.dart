@@ -1,4 +1,5 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/conquista.dart';
 import '../models/evento_pontos.dart';
@@ -30,7 +31,11 @@ class AppState extends ChangeNotifier {
   bool carregando = true;
   String? erro;
 
+  // Tema padrão = Claro (branco)
+  ThemeMode tema = ThemeMode.light;
+
   Future<void> carregar() async {
+    await carregarTema();
     carregando = true;
     erro = null;
     notifyListeners();
@@ -55,6 +60,35 @@ class AppState extends ChangeNotifier {
 
     carregando = false;
     notifyListeners();
+  }
+
+  // ---------------------------------------------------------------
+  // Tema
+  // ---------------------------------------------------------------
+
+  Future<void> carregarTema() async {
+    final prefs = await SharedPreferences.getInstance();
+    final valor = prefs.getString('tema') ?? 'light';
+
+    tema = switch (valor) {
+      'dark' => ThemeMode.dark,
+      'system' => ThemeMode.system,
+      _ => ThemeMode.light,
+    };
+    notifyListeners();
+  }
+
+  Future<void> alterarTema(ThemeMode novoTema) async {
+    tema = novoTema;
+    notifyListeners();
+
+    final prefs = await SharedPreferences.getInstance();
+    final valor = switch (novoTema) {
+      ThemeMode.dark => 'dark',
+      ThemeMode.system => 'system',
+      _ => 'light',
+    };
+    await prefs.setString('tema', valor);
   }
 
   // ---------------------------------------------------------------
@@ -89,7 +123,9 @@ class AppState extends ChangeNotifier {
   Future<void> _recarregarPontosEConquistas() async {
     final agora = DateTime.now();
     final inicioHoje = DateTime(agora.year, agora.month, agora.day);
-    final fimHoje = inicioHoje.add(const Duration(days: 1)).subtract(const Duration(milliseconds: 1));
+    final fimHoje = inicioHoje
+        .add(const Duration(days: 1))
+        .subtract(const Duration(milliseconds: 1));
     final inicioOntem = inicioHoje.subtract(const Duration(days: 1));
     final fimOntem = inicioHoje.subtract(const Duration(milliseconds: 1));
     final inicioSemana = inicioHoje.subtract(const Duration(days: 6));
@@ -100,7 +136,6 @@ class AppState extends ChangeNotifier {
     pontosTotais = await _db.pontosTotais();
     nivel = RegrasDePontos.nivelPara(pontosTotais);
 
-    // Sequência de dias
     diasSequencia = await _calcularSequencia();
 
     final segunda = inicioHoje.subtract(Duration(days: agora.weekday - 1));
@@ -115,14 +150,15 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  /// Calcula quantos dias seguidos o usuário fez pontos (olhando para trás)
   Future<int> _calcularSequencia() async {
     int sequencia = 0;
     DateTime dia = DateTime.now();
 
     while (true) {
       final inicioDia = DateTime(dia.year, dia.month, dia.day);
-      final fimDia = inicioDia.add(const Duration(days: 1)).subtract(const Duration(milliseconds: 1));
+      final fimDia = inicioDia
+          .add(const Duration(days: 1))
+          .subtract(const Duration(milliseconds: 1));
 
       final pontosDoDia = await _db.somaPontosEntre(inicioDia, fimDia);
 
@@ -133,7 +169,6 @@ class AppState extends ChangeNotifier {
         break;
       }
 
-      // Segurança: não deixa loop infinito
       if (sequencia > 365) break;
     }
 
@@ -175,6 +210,22 @@ class AppState extends ChangeNotifier {
 
     notifyListeners();
     return criado;
+  }
+
+  Future<void> atualizarProjeto(Projeto projeto) async {
+    await _db.atualizarProjeto(projeto);
+    final indice = projetos.indexWhere((p) => p.id == projeto.id);
+    if (indice != -1) {
+      projetos[indice] = projeto;
+      notifyListeners();
+    }
+  }
+
+  Future<void> excluirProjeto(int projetoId) async {
+    await _db.excluirProjeto(projetoId);
+    projetos.removeWhere((p) => p.id == projetoId);
+    progressoPorProjeto.remove(projetoId);
+    notifyListeners();
   }
 
   Future<void> definirProgressoManual(int projetoId, int valor) async {
@@ -276,23 +327,4 @@ class AppState extends ChangeNotifier {
     }
     notifyListeners();
   }
-
-
-  // Coloque dentro da classe AppState
-
-Future<void> atualizarProjeto(Projeto projeto) async {
-  await _db.atualizarProjeto(projeto);
-  final indice = projetos.indexWhere((p) => p.id == projeto.id);
-  if (indice != -1) {
-    projetos[indice] = projeto;
-    notifyListeners();
-  }
-}
-
-Future<void> excluirProjeto(int projetoId) async {
-  await _db.excluirProjeto(projetoId);
-  projetos.removeWhere((p) => p.id == projetoId);
-  progressoPorProjeto.remove(projetoId);
-  notifyListeners();
-}
 }
