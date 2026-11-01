@@ -1,378 +1,371 @@
-import 'package:app_estudos/screens/progresso_screen.dart';
-import 'package:app_estudos/screens/projetos_screen.dart';
-import 'package:app_estudos/screens/perfil_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../data/app_state.dart';
+import '../data/database_helper.dart';
 import '../data/regras_pontos.dart';
+import '../models/item.dart';
+import '../utils/formatadores.dart';
+import '../widgets/cabecalho_da_aba.dart';
+import '../widgets/dialogo_projeto.dart';
 import '../widgets/erro_de_carregamento.dart';
 import '../widgets/grafico_pontos_semana.dart';
+import 'anotacao_editor_screen.dart';
 
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+/// Tela de Início: saudação com avatar, sequência de dias + pontos
+/// de hoje, nível, gráfico semanal interativo e atalhos pros
+/// projetos e anotações mais recentes.
+class HomeScreen extends StatelessWidget {
+  final VoidCallback? aoTocarProjetos;
+  final VoidCallback? aoTocarAnotacoes;
+  final VoidCallback? aoTocarConfiguracoes;
 
-  @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends State<HomeScreen> {
-  int _filtroSelecionado = 0; // 0 = Semana | 1 = Mês | 2 = Tudo
+  const HomeScreen({
+    super.key,
+    this.aoTocarProjetos,
+    this.aoTocarAnotacoes,
+    this.aoTocarConfiguracoes,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<AppState>(
-      builder: (context, appState, _) {
-        return Scaffold(
-          appBar: AppBar(
-            title: const Text('Início'),
-            actions: [
-              Padding(
-                padding: const EdgeInsets.only(right: 12),
-                child: GestureDetector(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const PerfilScreen()),
-                    );
-                  },
-                  child: CircleAvatar(
-                    radius: 18,
-                    backgroundColor: Theme.of(context).colorScheme.primary,
+    return Scaffold(
+      body: SafeArea(
+        child: Consumer<AppState>(
+          builder: (context, appState, _) {
+            if (appState.carregando) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (appState.erro != null) {
+              return ErroDeCarregamento(mensagem: appState.erro!);
+            }
+
+            final nome = appState.nomeUsuario ?? 'Estudante';
+            final inicial = nome.isNotEmpty ? nome[0].toUpperCase() : '?';
+            final pontosDentroDoNivel =
+                RegrasDePontos.pontosDentroDoNivelAtual(appState.pontosTotais);
+            final pontosParaProximo =
+                RegrasDePontos.pontosParaProximoNivel(appState.nivel);
+            final hoje = DateTime.now();
+            final indiceHoje = hoje.weekday - 1;
+
+            return ListView(
+              padding: const EdgeInsets.only(bottom: 24),
+              children: [
+                CabecalhoDaAba(
+                  titulo: 'Olá, $nome!',
+                  subtitulo: formatarDataCompleta(hoje),
+                  leading: CircleAvatar(
+                    radius: 22,
                     child: Text(
-                      (appState.nomeUsuario?.isNotEmpty == true
-                              ? appState.nomeUsuario![0]
-                              : 'E')
-                          .toUpperCase(),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      inicial,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
+                  aoTocarConfiguracoes: aoTocarConfiguracoes,
                 ),
-              ),
-            ],
-          ),
-          body: appState.carregando
-              ? const Center(child: CircularProgressIndicator())
-              : appState.erro != null
-                  ? ErroDeCarregamento(mensagem: appState.erro!)
-                  : _buildBody(context, appState),
-        );
-      },
-    );
-  }
-
-  Widget _buildBody(BuildContext context, AppState appState) {
-    final faltamParaProximoNivel =
-        RegrasDePontos.pontosParaProximoNivel(appState.nivel);
-    final variacao = appState.pontosHoje - appState.pontosOntem;
-    final indiceHoje = DateTime.now().weekday - 1;
-
-    final tituloGrafico = switch (_filtroSelecionado) {
-      0 => 'Pontos da semana',
-      1 => 'Pontos do mês',
-      _ => 'Pontos totais',
-    };
-
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        if (appState.nomeUsuario != null) ...[
-          Text(
-            'Olá, ${appState.nomeUsuario}!',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: 12),
-        ],
-
-        // ===== CARD SEQUÊNCIA + NÍVEL =====
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Expanded(
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Sequência',
-                        style: Theme.of(context).textTheme.bodySmall,
+                      _CartaoSequenciaEPontosHoje(
+                        sequenciaDias: appState.sequenciaDias,
+                        pontosHoje: appState.pontosHoje,
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 12),
+                      Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      'Nível ${appState.nivel} · ${RegrasDePontos.tituloDoNivel(appState.nivel)}',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleMedium
+                                          ?.copyWith(fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                  Text('$pontosDentroDoNivel/$pontosParaProximo pts'),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(4),
+                                child: LinearProgressIndicator(
+                                  value: pontosParaProximo == 0
+                                      ? 0
+                                      : pontosDentroDoNivel / pontosParaProximo,
+                                  minHeight: 8,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Card(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Pontos da semana',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .titleMedium
+                                    ?.copyWith(fontWeight: FontWeight.bold),
+                              ),
+                              const SizedBox(height: 8),
+                              GraficoPontosSemana(
+                                pontosPorDia: appState.pontosPorDia,
+                                indiceHoje: indiceHoje,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
                       Row(
                         children: [
-                          const Icon(Icons.local_fire_department,
-                              color: Colors.orange, size: 22),
-                          const SizedBox(width: 6),
-                          Text(
-                            '${appState.diasSequencia} dias',
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleMedium
-                                ?.copyWith(fontWeight: FontWeight.bold),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () => Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => const AnotacaoEditorScreen(),
+                                ),
+                              ),
+                              icon: const Icon(Icons.note_add_outlined),
+                              label: const Text('Nova anotação'),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: FilledButton.icon(
+                              onPressed: () => abrirDialogoProjeto(context),
+                              icon: const Icon(Icons.create_new_folder_outlined),
+                              label: const Text('Novo projeto'),
+                            ),
                           ),
                         ],
                       ),
-                    ],
-                  ),
-                ),
-                Container(
-                  height: 45,
-                  width: 1,
-                  color: Colors.grey.shade300,
-                  margin: const EdgeInsets.symmetric(horizontal: 12),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Nível ${appState.nivel}',
-                        style: Theme.of(context).textTheme.headlineSmall,
+                      const SizedBox(height: 24),
+                      _SecaoComVerTudo(
+                        titulo: 'Projetos em andamento',
+                        aoTocarVerTudo:
+                            appState.projetos.isEmpty ? null : aoTocarProjetos,
                       ),
-                      const SizedBox(height: 4),
-                      Text('${appState.pontosTotais} pontos no total'),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Faltam $faltamParaProximoNivel pontos para o próximo nível',
-                        style: Theme.of(context).textTheme.bodySmall,
+                      const SizedBox(height: 8),
+                      if (appState.projetos.isEmpty)
+                        const _CartaoVazio(
+                          mensagem: 'Nenhum projeto ainda. Crie o primeiro acima.',
+                        )
+                      else
+                        ...appState.projetos.take(3).map((projeto) {
+                          final progresso =
+                              appState.progressoPorProjeto[projeto.id] ?? 0;
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 10),
+                            child: ListTile(
+                              leading: CircleAvatar(backgroundColor: Color(projeto.cor)),
+                              title: Text(projeto.nome),
+                              subtitle: Padding(
+                                padding: const EdgeInsets.only(top: 6),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(4),
+                                  child: LinearProgressIndicator(
+                                    value: progresso / 100,
+                                    minHeight: 6,
+                                  ),
+                                ),
+                              ),
+                              trailing: Text('$progresso%'),
+                              onTap: aoTocarProjetos,
+                            ),
+                          );
+                        }),
+                      const SizedBox(height: 16),
+                      _SecaoComVerTudo(
+                        titulo: 'Anotações recentes',
+                        aoTocarVerTudo: aoTocarAnotacoes,
+                      ),
+                      const SizedBox(height: 8),
+                      FutureBuilder<List<Item>>(
+                        future: DatabaseHelper.instance.listarAnotacoesRecentes(),
+                        builder: (context, snapshot) {
+                          if (!snapshot.hasData) {
+                            return const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 16),
+                              child: Center(child: CircularProgressIndicator()),
+                            );
+                          }
+                          final recentes = snapshot.data!;
+                          if (recentes.isEmpty) {
+                            return const _CartaoVazio(
+                              mensagem:
+                                  'Nenhuma anotação ainda. Toque em "Nova anotação" para começar.',
+                            );
+                          }
+                          return Column(
+                            children: recentes.map((item) {
+                              return Card(
+                                margin: const EdgeInsets.only(bottom: 10),
+                                child: ListTile(
+                                  leading: Icon(
+                                    item.visibilidade == Visibilidade.publica
+                                        ? Icons.public
+                                        : Icons.lock_outline,
+                                    size: 20,
+                                  ),
+                                  title: Text(item.titulo),
+                                  subtitle: item.conteudo.isEmpty
+                                      ? null
+                                      : Text(
+                                          item.conteudo,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                  onTap: () => Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          AnotacaoEditorScreen(itemExistente: item),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          );
+                        },
                       ),
                     ],
                   ),
                 ),
               ],
-            ),
-          ),
-        ),
-
-        const SizedBox(height: 16),
-
-        // ===== BOTÕES DE FILTRO =====
-        Row(
-          children: [
-            _BotaoFiltro(
-              texto: 'Semana',
-              selecionado: _filtroSelecionado == 0,
-              onTap: () => setState(() => _filtroSelecionado = 0),
-            ),
-            const SizedBox(width: 8),
-            _BotaoFiltro(
-              texto: 'Mês',
-              selecionado: _filtroSelecionado == 1,
-              onTap: () => setState(() => _filtroSelecionado = 1),
-            ),
-            const SizedBox(width: 8),
-            _BotaoFiltro(
-              texto: 'Tudo',
-              selecionado: _filtroSelecionado == 2,
-              onTap: () => setState(() => _filtroSelecionado = 2),
-            ),
-          ],
-        ),
-
-        const SizedBox(height: 12),
-
-        // ===== GRÁFICO =====
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 16, 12, 8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  tituloGrafico,
-                  style: Theme.of(context).textTheme.titleSmall,
-                ),
-                const SizedBox(height: 12),
-                GraficoPontosSemana(
-                  pontosPorDia: appState.pontosPorDia,
-                  indiceHoje: indiceHoje,
-                  altura: 140,
-                ),
-              ],
-            ),
-          ),
-        ),
-
-        const SizedBox(height: 16),
-
-        // ===== HOJE / ONTEM =====
-        Row(
-          children: [
-            Expanded(
-              child: _CartaoPontos(
-                titulo: 'Hoje',
-                valor: appState.pontosHoje,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _CartaoPontos(
-                titulo: 'Ontem',
-                valor: appState.pontosOntem,
-              ),
-            ),
-          ],
-        ),
-
-        const SizedBox(height: 8),
-
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              variacao >= 0 ? Icons.trending_up : Icons.trending_down,
-              color: variacao >= 0 ? Colors.green : Colors.redAccent,
-              size: 18,
-            ),
-            const SizedBox(width: 4),
-            Text(
-              variacao == 0
-                  ? 'Igual a ontem'
-                  : '${variacao > 0 ? '+' : ''}$variacao em relação a ontem',
-            ),
-          ],
-        ),
-
-        const SizedBox(height: 16),
-
-        // ===== ESTA SEMANA =====
-        GestureDetector(
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const ProgressoScreen()),
             );
           },
-          child: Container(
-            decoration: BoxDecoration(
-              color: const Color.fromARGB(255, 231, 235, 243),
-              border: Border.all(
-                color: const Color.fromARGB(255, 75, 73, 133),
-                width: 2,
-              ),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: ListTile(
-              leading: const Icon(Icons.date_range),
-              title: const Text(
-                'Esta semana',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              trailing: Text(
-                '${appState.pontosSemana} pts',
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ),
-          ),
         ),
+      ),
+    );
+  }
+}
 
-        const SizedBox(height: 12),
+class _SecaoComVerTudo extends StatelessWidget {
+  final String titulo;
+  final VoidCallback? aoTocarVerTudo;
 
-        // ===== PROJETOS ATIVOS =====
-        GestureDetector(
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const ProjetosScreen()),
-            );
-          },
-          child: Container(
-            decoration: BoxDecoration(
-              color: const Color.fromARGB(255, 255, 224, 198),
-              border: Border.all(
-                color: const Color(0xFFC56F29),
-                width: 2,
-              ),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: ListTile(
-              leading: const Icon(Icons.folder_outlined),
-              title: const Text(
-                'Projetos ativos',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              trailing: Text(
-                '${appState.projetos.length}',
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ),
-          ),
+  const _SecaoComVerTudo({required this.titulo, this.aoTocarVerTudo});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          titulo,
+          style: Theme.of(context)
+              .textTheme
+              .titleMedium
+              ?.copyWith(fontWeight: FontWeight.bold),
         ),
+        if (aoTocarVerTudo != null)
+          TextButton(onPressed: aoTocarVerTudo, child: const Text('Ver todos')),
       ],
     );
   }
 }
 
-class _BotaoFiltro extends StatelessWidget {
-  final String texto;
-  final bool selecionado;
-  final VoidCallback onTap;
-
-  const _BotaoFiltro({
-    required this.texto,
-    required this.selecionado,
-    required this.onTap,
-  });
+class _CartaoVazio extends StatelessWidget {
+  final String mensagem;
+  const _CartaoVazio({required this.mensagem});
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          decoration: BoxDecoration(
-            color: selecionado
-                ? Theme.of(context).colorScheme.primary
-                : Colors.grey.shade200,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Center(
-            child: Text(
-              texto,
-              style: TextStyle(
-                color: selecionado ? Colors.white : Colors.black87,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Text(
+          mensagem,
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.bodySmall,
         ),
       ),
     );
   }
 }
 
-class _CartaoPontos extends StatelessWidget {
-  final String titulo;
-  final int valor;
+class _CartaoSequenciaEPontosHoje extends StatelessWidget {
+  final int sequenciaDias;
+  final int pontosHoje;
 
-  const _CartaoPontos({
-    required this.titulo,
-    required this.valor,
+  const _CartaoSequenciaEPontosHoje({
+    required this.sequenciaDias,
+    required this.pontosHoje,
   });
 
   @override
   Widget build(BuildContext context) {
+    final cores = Theme.of(context).colorScheme;
     return Card(
+      color: cores.primary,
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        child: Column(
+        padding: const EdgeInsets.all(16),
+        child: Row(
           children: [
-            Text(titulo, style: Theme.of(context).textTheme.bodyMedium),
-            const SizedBox(height: 4),
-            Text(
-              '$valor',
-              style: Theme.of(context).textTheme.headlineMedium,
+            Expanded(
+              child: _ValorDoCartao(
+                icone: Icons.local_fire_department,
+                valor: '$sequenciaDias',
+                rotulo: sequenciaDias == 1 ? 'dia seguido' : 'dias seguidos',
+                corTexto: cores.onPrimary,
+              ),
+            ),
+            Container(width: 1, height: 36, color: cores.onPrimary.withOpacity(0.3)),
+            Expanded(
+              child: _ValorDoCartao(
+                icone: Icons.bolt,
+                valor: '$pontosHoje',
+                rotulo: 'pontos hoje',
+                corTexto: cores.onPrimary,
+              ),
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _ValorDoCartao extends StatelessWidget {
+  final IconData icone;
+  final String valor;
+  final String rotulo;
+  final Color corTexto;
+
+  const _ValorDoCartao({
+    required this.icone,
+    required this.valor,
+    required this.rotulo,
+    required this.corTexto,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Icon(icone, color: corTexto),
+        const SizedBox(height: 4),
+        Text(
+          valor,
+          style: TextStyle(color: corTexto, fontSize: 22, fontWeight: FontWeight.bold),
+        ),
+        Text(rotulo, style: TextStyle(color: corTexto, fontSize: 12)),
+      ],
     );
   }
 }

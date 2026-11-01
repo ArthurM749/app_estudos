@@ -28,7 +28,6 @@ dependencies:
   # Pendência do doc: confirmar com o grupo se fica Provider ou trocam
   # por Riverpod antes de todo mundo começar a escrever código.
   provider: ^6.1.2
-  shared_preferences: ^2.2.3
 
 dev_dependencies:
   flutter_test:

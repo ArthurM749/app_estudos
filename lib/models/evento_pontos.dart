@@ -4,6 +4,7 @@
 /// `RegrasDePontos` (lib/data/regras_pontos.dart), não aqui — este
 /// enum só identifica QUAL ação aconteceu.
 enum TipoAcao {
+  criarProjeto,
   criarAnotacao,
   concluirTarefa,
   concluirProjeto,

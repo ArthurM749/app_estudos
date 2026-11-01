@@ -44,31 +44,16 @@ class DatabaseHelper {
     final path = join(await getDatabasesPath(), 'app_estudos.db');
     return openDatabase(
       path,
-      version: 2,
+      version: 1,
       onCreate: _onCreate,
-      onOpen: (db) async => garantirTabelaPerfil(db),
-      onUpgrade: (db, oldVersion, newVersion) async {
-        if (oldVersion < 2) {
-          await garantirTabelaPerfil(db);
-        }
+      // O SQLite não aplica "ON DELETE SET NULL" (usado na tabela de
+      // itens) a menos que isso seja ligado explicitamente em cada
+      // conexão — sem essa linha, excluir um projeto deixaria os
+      // itens dele com um projeto_id "fantasma".
+      onConfigure: (db) async {
+        await db.execute('PRAGMA foreign_keys = ON');
       },
     );
-  }
-
-  Future<void> garantirTabelaPerfil(Database db) async {
-    final jaExiste = await db.rawQuery(
-      "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'perfil'",
-    );
-    if (jaExiste.isNotEmpty) return;
-
-    await db.execute('''
-      CREATE TABLE perfil (
-        id INTEGER PRIMARY KEY CHECK (id = 1),
-        nome TEXT,
-        email TEXT,
-        pulou INTEGER NOT NULL DEFAULT 0
-      )
-    ''');
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -120,7 +105,16 @@ class DatabaseHelper {
     // local (nome + email) ou escolheu continuar sem conta. Não é
     // autenticação de verdade — isso só existe pra já deixar pronto
     // pra quando a fase de sincronização ligar de fato numa conta.
-    await garantirTabelaPerfil(db);
+    await db.execute('''
+      CREATE TABLE perfil (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        nome TEXT,
+        email TEXT,
+        pulou INTEGER NOT NULL DEFAULT 0,
+        tema TEXT NOT NULL DEFAULT 'claro',
+        criado_em TEXT
+      )
+    ''');
   }
 
   // ---------------------------------------------------------------
@@ -129,7 +123,8 @@ class DatabaseHelper {
 
   Future<int> inserirProjeto(Projeto projeto) async {
     final db = await database;
-    return db.insert('projetos', projeto.toMap()..remove('id'));
+    return db.insert('projetos', projeto.toMap()
+      ..remove('id'));
   }
 
   Future<List<Projeto>> listarProjetos({bool incluirArquivados = false}) async {
@@ -205,22 +200,83 @@ class DatabaseHelper {
     return db.delete('itens', where: 'id = ?', whereArgs: [id]);
   }
 
+  /// Lista global de anotações (não restrita a um projeto), com
+  /// busca por texto e filtro por projeto — usada na aba Anotações.
+  Future<List<Item>> listarAnotacoes({
+    bool apenasSemProjeto = false,
+    int? projetoId,
+    String? busca,
+  }) async {
+    final db = await database;
+    final condicoes = <String>["tipo = 'anotacao'"];
+    final args = <Object?>[];
+
+    if (apenasSemProjeto) {
+      condicoes.add('projeto_id IS NULL');
+    } else if (projetoId != null) {
+      condicoes.add('projeto_id = ?');
+      args.add(projetoId);
+    }
+
+    final termoBusca = busca?.trim() ?? '';
+    if (termoBusca.isNotEmpty) {
+      condicoes.add('(titulo LIKE ? OR conteudo LIKE ?)');
+      args.add('%$termoBusca%');
+      args.add('%$termoBusca%');
+    }
+
+    final maps = await db.query(
+      'itens',
+      where: condicoes.join(' AND '),
+      whereArgs: args.isEmpty ? null : args,
+      orderBy: 'criado_em DESC',
+    );
+    return maps.map(Item.fromMap).toList();
+  }
+
+  Future<List<Item>> listarAnotacoesRecentes({int limite = 3}) async {
+    final db = await database;
+    final maps = await db.query(
+      'itens',
+      where: "tipo = 'anotacao'",
+      orderBy: 'criado_em DESC',
+      limit: limite,
+    );
+    return maps.map(Item.fromMap).toList();
+  }
+
+  /// Quantos itens de um [tipo] existem (opcionalmente filtrando por
+  /// concluído). Usado pelas conquistas que dependem de contagem
+  /// ("Biblioteca": 10 anotações, "Mãos à obra": 1ª tarefa feita).
+  Future<int> contarItens({required TipoItem tipo, bool? concluido}) async {
+    final db = await database;
+    final condicoes = <String>['tipo = ?'];
+    final args = <Object?>[tipo.name];
+    if (concluido != null) {
+      condicoes.add('concluido = ?');
+      args.add(concluido ? 1 : 0);
+    }
+    final resultado = await db.rawQuery(
+      'SELECT COUNT(*) as c FROM itens WHERE ${condicoes.join(' AND ')}',
+      args,
+    );
+    return Sqflite.firstIntValue(resultado) ?? 0;
+  }
+
   /// Progresso de 0 a 100 de um projeto no modo "por tarefas":
   /// razão entre tarefas concluídas e tarefas totais do projeto.
   Future<int> progressoPorTarefas(int projetoId) async {
     final db = await database;
     final total = Sqflite.firstIntValue(await db.rawQuery(
-          "SELECT COUNT(*) FROM itens WHERE projeto_id = ? AND tipo = 'tarefa'",
-          [projetoId],
-        )) ??
-        0;
+      "SELECT COUNT(*) FROM itens WHERE projeto_id = ? AND tipo = 'tarefa'",
+      [projetoId],
+    )) ?? 0;
     if (total == 0) return 0;
 
     final concluidas = Sqflite.firstIntValue(await db.rawQuery(
-          "SELECT COUNT(*) FROM itens WHERE projeto_id = ? AND tipo = 'tarefa' AND concluido = 1",
-          [projetoId],
-        )) ??
-        0;
+      "SELECT COUNT(*) FROM itens WHERE projeto_id = ? AND tipo = 'tarefa' AND concluido = 1",
+      [projetoId],
+    )) ?? 0;
 
     return ((concluidas / total) * 100).round();
   }
@@ -237,7 +293,13 @@ class DatabaseHelper {
     final db = await database;
     await db.insert(
       'perfil',
-      {'id': 1, 'nome': nome, 'email': email, 'pulou': pulou ? 1 : 0},
+      {
+        'id': 1,
+        'nome': nome,
+        'email': email,
+        'pulou': pulou ? 1 : 0,
+        'criado_em': DateTime.now().toIso8601String(),
+      },
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
   }
@@ -248,6 +310,25 @@ class DatabaseHelper {
     final db = await database;
     final resultados = await db.query('perfil', where: 'id = 1', limit: 1);
     return resultados.isEmpty ? null : resultados.first;
+  }
+
+  /// Só troca o tema — ao contrário de [salvarPerfil], não substitui
+  /// a linha inteira (preserva nome/email/criado_em já salvos).
+  Future<void> atualizarTema(String tema) async {
+    final db = await database;
+    await db.update('perfil', {'tema': tema}, where: 'id = 1');
+  }
+
+  /// Apaga TUDO: projetos, itens, pontos, conquistas e perfil. Usado
+  /// pelo botão "Apagar todos os dados" — depois disso o app volta a
+  /// mostrar a tela de criar perfil, como se fosse a primeira vez.
+  Future<void> apagarTudo() async {
+    final db = await database;
+    await db.delete('itens');
+    await db.delete('projetos');
+    await db.delete('eventos_pontos');
+    await db.delete('conquistas_desbloqueadas');
+    await db.delete('perfil');
   }
 
   // ---------------------------------------------------------------
@@ -277,6 +358,20 @@ class DatabaseHelper {
         await db.rawQuery('SELECT SUM(pontos) as total FROM eventos_pontos');
     final total = resultado.first['total'];
     return (total as int?) ?? 0;
+  }
+
+  /// Todo dia (sem hora) em que o usuário ganhou pelo menos 1 ponto,
+  /// do mais recente pro mais antigo. Usado pra calcular a sequência
+  /// de dias seguidos estudando.
+  Future<List<DateTime>> diasComPontosDistintos() async {
+    final db = await database;
+    final linhas = await db.rawQuery('SELECT DISTINCT data FROM eventos_pontos');
+    final dias = linhas.map((linha) {
+      final data = DateTime.parse(linha['data'] as String);
+      return DateTime(data.year, data.month, data.day);
+    }).toSet().toList();
+    dias.sort((a, b) => b.compareTo(a));
+    return dias;
   }
 
   /// 7 valores (pontos ganhos naquele dia), de segunda a domingo da

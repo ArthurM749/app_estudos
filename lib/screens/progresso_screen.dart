@@ -43,7 +43,25 @@ class ProgressoScreen extends StatelessWidget {
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 8),
-              
+              ...conquistasDisponiveis.map((conquista) {
+                final desbloqueada =
+                    appState.conquistasDesbloqueadas.contains(conquista.id);
+                return Card(
+                  child: ListTile(
+                    leading: Icon(
+                      desbloqueada
+                          ? Icons.emoji_events
+                          : Icons.emoji_events_outlined,
+                      color: desbloqueada ? Colors.amber[700] : Colors.grey,
+                    ),
+                    title: Text(conquista.nome),
+                    subtitle: Text(conquista.descricao),
+                    trailing: desbloqueada
+                        ? const Icon(Icons.check_circle, color: Colors.green)
+                        : const Icon(Icons.lock_outline, color: Colors.grey),
+                  ),
+                );
+              }),
             ],
           );
         },

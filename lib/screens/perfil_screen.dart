@@ -3,399 +3,350 @@ import 'package:provider/provider.dart';
 
 import '../data/app_state.dart';
 import '../models/conquista.dart';
-import '../widgets/erro_de_carregamento.dart';
+import '../utils/formatadores.dart';
 
+/// Ícone de cada conquista. Fica aqui (e não no model) pra manter
+/// `Conquista` livre de dependência do Flutter.
+const Map<String, IconData> _iconesConquistas = {
+  'primeira_anotacao': Icons.edit_note,
+  'arquiteto': Icons.architecture,
+  'maos_a_obra': Icons.handyman,
+  'biblioteca': Icons.menu_book,
+  'nivel_5': Icons.military_tech,
+  'nivel_10': Icons.workspace_premium,
+  'aquecendo': Icons.local_fire_department,
+  'semana_perfeita': Icons.event_available,
+  'centenario': Icons.star,
+  'estudioso': Icons.school,
+  'dedicado': Icons.emoji_events,
+};
+
+/// Perfil: avatar e dados do usuário (ou "modo convidado"),
+/// estatísticas, grade de conquistas, aparência (tema) e a opção de
+/// apagar todos os dados do aparelho.
 class PerfilScreen extends StatelessWidget {
   const PerfilScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Perfil'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            onPressed: () {},
-          ),
-        ],
-      ),
-      body: Consumer<AppState>(
-        builder: (context, appState, _) {
-          if (appState.carregando) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (appState.erro != null) {
-            return ErroDeCarregamento(mensagem: appState.erro!);
-          }
+      body: SafeArea(
+        child: Consumer<AppState>(
+          builder: (context, appState, _) {
+            final temConta = appState.nomeUsuario != null;
+            final nome = appState.nomeUsuario ?? 'Estudante';
+            final inicial = nome.isNotEmpty ? nome[0].toUpperCase() : '?';
+            final desde = appState.perfilCriadoEm;
 
-          final iniciais = (appState.nomeUsuario?.isNotEmpty == true
-                  ? appState.nomeUsuario![0]
-                  : 'E')
-              .toUpperCase();
-
-          final nome = appState.nomeUsuario ?? 'Estudante';
-          final modo = appState.emailUsuario != null
-              ? appState.emailUsuario!
-              : 'Modo convidado · sem conta';
-
-          return ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              // ===== CARD DO USUÁRIO =====
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 28,
-                        backgroundColor: Theme.of(context).colorScheme.primary,
-                        child: Text(
-                          iniciais,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              nome,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleMedium
-                                  ?.copyWith(fontWeight: FontWeight.bold),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              modo,
-                              style: Theme.of(context).textTheme.bodySmall,
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              'Estudando desde outubro de 2026',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodySmall
-                                  ?.copyWith(color: Colors.grey),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 12),
-
-              // ===== ESTATÍSTICAS =====
-              Row(
-                children: [
-                  Expanded(
-                    child: _StatCard(
-                      valor: '${appState.pontosTotais}',
-                      label: 'pontos',
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _StatCard(
-                      valor: '${appState.diasSequencia}',
-                      label: 'dias seguidos',
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _StatCard(
-                      valor: '${appState.nivel}',
-                      label: 'nível',
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 24),
-
-              // ===== CONQUISTAS =====
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Conquistas',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  Text(
-                    '${appState.conquistasDesbloqueadas.length}/${conquistasDisponiveis.length}',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: conquistasDisponiveis.length,
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 3,
-                      mainAxisSpacing: 12,
-                      crossAxisSpacing: 12,
-                      childAspectRatio: 0.85,
-                    ),
-                    itemBuilder: (context, index) {
-                      final conquista = conquistasDisponiveis[index];
-                      final desbloqueada = appState.conquistasDesbloqueadas
-                          .contains(conquista.id);
-
-                      return Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          CircleAvatar(
-                            radius: 26,
-                            backgroundColor: desbloqueada
-                                ? Theme.of(context)
-                                    .colorScheme
-                                    .primary
-                                    .withOpacity(0.15)
-                                : Colors.grey.withOpacity(0.2),
-                            child: Icon(
-                              desbloqueada
-                                  ? Icons.emoji_events
-                                  : Icons.lock_outline,
-                              color: desbloqueada
-                                  ? Colors.amber.shade600
-                                  : Colors.grey,
-                              size: 26,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            conquista.nome,
-                            textAlign: TextAlign.center,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: desbloqueada ? null : Colors.grey,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            conquista.descricao,
-                            textAlign: TextAlign.center,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 9,
-                              color: Colors.grey.shade500,
-                            ),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 24),
-
-              // ===== APARÊNCIA (TEMA) =====
-              Text(
-                'Aparência',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 8),
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(6),
-                  child: Row(
-                    children: [
-                      _TemaBotao(
-                        texto: 'Sistema',
-                        selecionado: appState.tema == ThemeMode.system,
-                        onTap: () => appState.alterarTema(ThemeMode.system),
-                      ),
-                      _TemaBotao(
-                        texto: 'Claro',
-                        selecionado: appState.tema == ThemeMode.light,
-                        onTap: () => appState.alterarTema(ThemeMode.light),
-                      ),
-                      _TemaBotao(
-                        texto: 'Escuro',
-                        selecionado: appState.tema == ThemeMode.dark,
-                        onTap: () => appState.alterarTema(ThemeMode.dark),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
-              // ===== FEED =====
-              Card(
-                child: ListTile(
-                  leading: const Icon(Icons.people_outline),
-                  title: const Text('Feed e publicações'),
-                  subtitle: const Text(
-                      'Curta, comente e siga amigos em uma próxima versão.'),
-                  trailing: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.amber.shade700,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Text(
-                      'Em breve',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 24),
-
-              // ===== SEUS DADOS =====
-              Text(
-                'Seus dados',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 8),
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
+            return ListView(
+              padding: const EdgeInsets.fromLTRB(16, 24, 16, 32),
+              children: [
+                Center(
                   child: Column(
                     children: [
-                      const Row(
-                        children: [
-                          Icon(Icons.phone_android, size: 20),
-                          SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              'Tudo é salvo apenas neste dispositivo, offline.\nDepois você poderá sincronizar com a internet se quiser.',
-                              style: TextStyle(fontSize: 13),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      SizedBox(
-                        width: double.infinity,
-                        child: FilledButton(
-                          style: FilledButton.styleFrom(
-                            backgroundColor: Colors.red.shade400,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                          ),
-                          onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                  content: Text('Funcionalidade em breve')),
-                            );
-                          },
-                          child: const Text(
-                            'Apagar todos os dados',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
+                      CircleAvatar(
+                        radius: 36,
+                        child: Text(
+                          inicial,
+                          style:
+                              const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
                         ),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        nome,
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleLarge
+                            ?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        temConta
+                            ? (appState.emailUsuario ?? '')
+                            : 'Modo convidado · sem conta',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
+                      ),
+                      if (desde != null) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          'Estudando desde ${formatarMesAno(desde)}',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _Estatistica(valor: '${appState.pontosTotais}', rotulo: 'pontos'),
+                    ),
+                    Expanded(
+                      child: _Estatistica(
+                        valor: '${appState.sequenciaDias}',
+                        rotulo: 'sequência',
+                      ),
+                    ),
+                    Expanded(
+                      child: _Estatistica(valor: '${appState.nivel}', rotulo: 'nível'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  'Conquistas',
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${appState.conquistasDesbloqueadas.length}/${conquistasDisponiveis.length} desbloqueadas',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                ),
+                const SizedBox(height: 12),
+                GridView.count(
+                  crossAxisCount: 3,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  mainAxisSpacing: 10,
+                  crossAxisSpacing: 10,
+                  childAspectRatio: 0.85,
+                  children: conquistasDisponiveis.map((conquista) {
+                    final desbloqueada =
+                        appState.conquistasDesbloqueadas.contains(conquista.id);
+                    return _CartaoConquista(
+                      conquista: conquista,
+                      desbloqueada: desbloqueada,
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  'Aparência',
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Card(
+                  child: Column(
+                    children: [
+                      RadioListTile<ThemeMode>(
+                        title: const Text('Sistema'),
+                        value: ThemeMode.system,
+                        groupValue: appState.tema,
+                        onChanged: (modo) => appState.definirTema(modo!),
+                      ),
+                      RadioListTile<ThemeMode>(
+                        title: const Text('Claro'),
+                        value: ThemeMode.light,
+                        groupValue: appState.tema,
+                        onChanged: (modo) => appState.definirTema(modo!),
+                      ),
+                      RadioListTile<ThemeMode>(
+                        title: const Text('Escuro'),
+                        value: ThemeMode.dark,
+                        groupValue: appState.tema,
+                        onChanged: (modo) => appState.definirTema(modo!),
                       ),
                     ],
                   ),
                 ),
-              ),
-
-              const SizedBox(height: 32),
-            ],
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _StatCard extends StatelessWidget {
-  final String valor;
-  final String label;
-
-  const _StatCard({required this.valor, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        child: Column(
-          children: [
-            Text(
-              valor,
-              style: Theme.of(context)
-                  .textTheme
-                  .titleLarge
-                  ?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          ],
+                const SizedBox(height: 24),
+                Text(
+                  'Feed e publicações',
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.dynamic_feed_outlined),
+                    title: const Text('Publicar anotações para outras pessoas'),
+                    subtitle: const Text(
+                      'Vai funcionar quando o app sincronizar com a internet, '
+                      'numa fase seguinte do projeto.',
+                    ),
+                    trailing: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.secondaryContainer,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        'Em breve',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.onSecondaryContainer,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  'Seus dados',
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      children: [
+                        Icon(Icons.phone_iphone, color: Theme.of(context).colorScheme.primary),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Tudo o que você vê aqui fica salvo só neste aparelho '
+                            '— nada é enviado pra internet nessa versão.',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Theme.of(context).colorScheme.errorContainer,
+                      foregroundColor: Theme.of(context).colorScheme.onErrorContainer,
+                    ),
+                    onPressed: () => _confirmarApagarTudo(context),
+                    icon: const Icon(Icons.delete_forever_outlined),
+                    label: const Text('Apagar todos os dados'),
+                  ),
+                ),
+              ],
+            );
+          },
         ),
       ),
     );
   }
+
+  Future<void> _confirmarApagarTudo(BuildContext context) async {
+    final confirmou = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Apagar todos os dados?'),
+        content: const Text(
+          'Isso remove todos os projetos, anotações, tarefas, pontos e '
+          'conquistas deste aparelho. Não pode ser desfeito.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(dialogContext).colorScheme.error,
+            ),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Apagar tudo'),
+          ),
+        ],
+      ),
+    );
+    if (confirmou == true) {
+      await context.read<AppState>().apagarTudo();
+    }
+  }
 }
 
-class _TemaBotao extends StatelessWidget {
-  final String texto;
-  final bool selecionado;
-  final VoidCallback onTap;
+class _Estatistica extends StatelessWidget {
+  final String valor;
+  final String rotulo;
 
-  const _TemaBotao({
-    required this.texto,
-    required this.selecionado,
-    required this.onTap,
-  });
+  const _Estatistica({required this.valor, required this.rotulo});
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          margin: const EdgeInsets.all(4),
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          decoration: BoxDecoration(
-            color: selecionado
-                ? Theme.of(context).colorScheme.primary
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Center(
-            child: Text(
-              texto,
+    return Column(
+      children: [
+        Text(
+          valor,
+          style: Theme.of(context)
+              .textTheme
+              .headlineSmall
+              ?.copyWith(fontWeight: FontWeight.bold),
+        ),
+        Text(
+          rotulo,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CartaoConquista extends StatelessWidget {
+  final Conquista conquista;
+  final bool desbloqueada;
+
+  const _CartaoConquista({required this.conquista, required this.desbloqueada});
+
+  @override
+  Widget build(BuildContext context) {
+    final cores = Theme.of(context).colorScheme;
+    final icone = _iconesConquistas[conquista.id] ?? Icons.emoji_events_outlined;
+
+    return Tooltip(
+      message: '${conquista.nome}\n${conquista.descricao}',
+      child: Container(
+        decoration: BoxDecoration(
+          color: desbloqueada ? cores.primaryContainer : cores.surfaceVariant,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        padding: const EdgeInsets.all(8),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icone,
+              size: 26,
+              color: desbloqueada
+                  ? cores.onPrimaryContainer
+                  : cores.onSurfaceVariant.withOpacity(0.4),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              conquista.nome,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                color: selecionado ? Colors.white : null,
+                fontSize: 10.5,
                 fontWeight: FontWeight.w600,
+                color: desbloqueada
+                    ? cores.onPrimaryContainer
+                    : cores.onSurfaceVariant.withOpacity(0.6),
               ),
             ),
-          ),
+          ],
         ),
       ),
     );

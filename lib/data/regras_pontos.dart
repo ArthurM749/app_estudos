@@ -9,8 +9,11 @@ class RegrasDePontos {
   RegrasDePontos._();
 
   static const Map<TipoAcao, int> pontosPorAcao = {
-    TipoAcao.criarAnotacao: 10,
-    TipoAcao.concluirTarefa: 5,
+    TipoAcao.criarProjeto: 10,
+    TipoAcao.criarAnotacao: 5,
+    TipoAcao.concluirTarefa: 10,
+    // Bônus por terminar um projeto inteiro (chegar a 100%), além
+    // dos pontos que cada tarefa já deu no caminho.
     TipoAcao.concluirProjeto: 100,
   };
 
@@ -28,5 +31,26 @@ class RegrasDePontos {
       nivel++;
     }
     return nivel;
+  }
+
+  /// Quantos pontos já foram acumulados DENTRO do nível atual (o "x"
+  /// de "x/100 pts" na barra de progresso do nível).
+  static int pontosDentroDoNivelAtual(int pontosTotais) {
+    var nivel = 1;
+    var restante = pontosTotais;
+    while (restante >= pontosParaProximoNivel(nivel)) {
+      restante -= pontosParaProximoNivel(nivel);
+      nivel++;
+    }
+    return restante;
+  }
+
+  /// Nome amigável do nível, só decoração.
+  static String tituloDoNivel(int nivel) {
+    if (nivel <= 2) return 'Iniciante';
+    if (nivel <= 4) return 'Aprendiz';
+    if (nivel <= 9) return 'Estudioso';
+    if (nivel <= 19) return 'Mestre';
+    return 'Lenda';
   }
 }
