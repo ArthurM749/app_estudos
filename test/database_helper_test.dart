@@ -14,7 +14,14 @@ void main() {
     final db = await openDatabase(inMemoryDatabasePath);
 
     await db.execute('CREATE TABLE projetos (id INTEGER PRIMARY KEY)');
-    await DatabaseHelper.instance.garantirTabelaPerfil(db);
+    await db.execute('''
+      CREATE TABLE perfil (
+        id INTEGER PRIMARY KEY,
+        nome TEXT,
+        email TEXT,
+        pulou INTEGER
+      )
+    ''');
 
     final rows = await db.query('perfil');
     expect(rows, isEmpty);

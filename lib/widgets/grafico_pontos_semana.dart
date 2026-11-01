@@ -39,6 +39,18 @@ class _GraficoPontosSemanaState extends State<GraficoPontosSemana> {
     }
   }
 
+  /// Degrau "limpo" (5, 10, 20, 25, 50, 100...) pra separar as
+  /// marcações do eixo Y, escolhido de forma que caibam uns 4 a 6
+  /// números até cobrir [maiorValor] com folga.
+  int _intervaloLimpo(int maiorValor) {
+    const candidatos = [5, 10, 20, 25, 50, 100, 200, 250, 500, 1000];
+    final alvo = maiorValor * 1.25;
+    for (final candidato in candidatos) {
+      if (candidato * 5 >= alvo) return candidato;
+    }
+    return 1000;
+  }
+
   @override
   Widget build(BuildContext context) {
     final cores = Theme.of(context).colorScheme;
@@ -46,7 +58,15 @@ class _GraficoPontosSemanaState extends State<GraficoPontosSemana> {
         widget.pontosPorDia.fold<int>(0, (soma, v) => soma + v);
     final maiorValor =
         widget.pontosPorDia.fold<int>(0, (maior, v) => v > maior ? v : maior);
-    final double teto = maiorValor == 0 ? 10.0 : maiorValor * 1.25;
+
+    // O teto precisa ser um múltiplo exato do intervalo das marcações
+    // do eixo — senão o fl_chart desenha um rótulo extra bem no valor
+    // do teto (quase sempre quebrado, tipo "43.75") além dos rótulos
+    // "redondos" (0, 10, 20...), e os dois acabam se sobrepondo.
+    final intervalo = _intervaloLimpo(maiorValor);
+    final double teto = maiorValor == 0
+        ? intervalo.toDouble()
+        : (((maiorValor * 1.25) / intervalo).ceil() * intervalo).toDouble();
     final indiceValido =
         _indiceSelecionado.clamp(0, widget.pontosPorDia.length - 1);
 
@@ -104,8 +124,22 @@ class _GraficoPontosSemanaState extends State<GraficoPontosSemana> {
                     const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                 rightTitles:
                     const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                leftTitles: const AxisTitles(
-                  sideTitles: SideTitles(showTitles: true, reservedSize: 28),
+                leftTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    reservedSize: 32,
+                    // Intervalo fixo (em vez de deixar o fl_chart
+                    // calcular sozinho) é o que evita o rótulo extra
+                    // sobreposto — ver o comentário no cálculo do
+                    // teto, acima.
+                    interval: intervalo.toDouble(),
+                    getTitlesWidget: (valor, meta) {
+                      // Sempre número inteiro, mesmo que o valor
+                      // interno do fl_chart seja double (pontos nunca
+                      // são fracionados no app).
+                      return Text(valor.round().toString());
+                    },
+                  ),
                 ),
                 bottomTitles: AxisTitles(
                   sideTitles: SideTitles(
