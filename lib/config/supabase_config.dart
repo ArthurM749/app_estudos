@@ -3,7 +3,7 @@
 class SupabaseConfig {
   static const url = String.fromEnvironment(
     'SUPABASE_URL',
-    defaultValue: 'https:pjuuvkrrkjqblqpkwcoo.supabase.co',
+    defaultValue: 'https://pjuuvkrrkjqblqpkwcoo.supabase.co',
   );
   static const anonKey = String.fromEnvironment(
     'SUPABASE_ANON_KEY',
