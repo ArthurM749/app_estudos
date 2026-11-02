@@ -42,10 +42,11 @@ class DatabaseHelper {
     }
 
     final path = join(await getDatabasesPath(), 'app_estudos.db');
-    return openDatabase(
+     return openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
       // O SQLite não aplica "ON DELETE SET NULL" (usado na tabela de
       // itens) a menos que isso seja ligado explicitamente em cada
       // conexão — sem essa linha, excluir um projeto deixaria os
@@ -54,6 +55,13 @@ class DatabaseHelper {
         await db.execute('PRAGMA foreign_keys = ON');
       },
     );
+  }
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await db.execute(
+          "ALTER TABLE perfil ADD COLUMN tema TEXT NOT NULL DEFAULT 'claro'");
+      await db.execute('ALTER TABLE perfil ADD COLUMN criado_em TEXT');
+    }
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -285,12 +293,13 @@ class DatabaseHelper {
   // Perfil local (opcional)
   // ---------------------------------------------------------------
 
-  Future<void> salvarPerfil({
+   Future<void> salvarPerfil({
     String? nome,
     String? email,
     required bool pulou,
   }) async {
     final db = await database;
+    final existente = await obterPerfil();
     await db.insert(
       'perfil',
       {
@@ -298,6 +307,7 @@ class DatabaseHelper {
         'nome': nome,
         'email': email,
         'pulou': pulou ? 1 : 0,
+        'tema': existente?['tema'] ?? 'claro',
         'criado_em': DateTime.now().toIso8601String(),
       },
       conflictAlgorithm: ConflictAlgorithm.replace,

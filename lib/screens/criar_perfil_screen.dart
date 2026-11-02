@@ -32,19 +32,32 @@ class _CriarPerfilScreenState extends State<CriarPerfilScreen> {
   Future<void> _criarPerfil() async {
     if (_formKey.currentState?.validate() != true || _salvando) return;
     setState(() => _salvando = true);
-    await context.read<AppState>().criarPerfil(
-          nome: _nomeController.text.trim(),
-          email: _emailController.text.trim(),
-        );
-    // Depois disso o AppState marca onboardingConcluido = true e
-    // quem decide a tela (PortaDeEntrada) troca pra navegação
-    // principal sozinho — não precisa de Navigator aqui.
+    try {
+      await context.read<AppState>().criarPerfil(
+            nome: _nomeController.text.trim(),
+            email: _emailController.text.trim(),
+          );
+    } catch (e) {
+      _mostrarErro(e);
+    }
   }
 
   Future<void> _continuarSemConta() async {
     if (_salvando) return;
     setState(() => _salvando = true);
-    await context.read<AppState>().continuarSemConta();
+    try {
+      await context.read<AppState>().continuarSemConta();
+    } catch (e) {
+      _mostrarErro(e);
+    }
+  }
+
+  void _mostrarErro(Object e) {
+    if (!mounted) return;
+    setState(() => _salvando = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Não foi possível salvar: $e')),
+    );
   }
 
   @override

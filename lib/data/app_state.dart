@@ -109,8 +109,12 @@ class AppState extends ChangeNotifier {
 
   Future<void> definirTema(ThemeMode modo) async {
     tema = modo;
-    await _db.atualizarTema(_temaParaTexto(modo));
     notifyListeners();
+    try {
+      await _db.atualizarTema(_temaParaTexto(modo));
+    } catch (e) {
+      debugPrint('Erro ao salvar tema: $e');
+    }
   }
 
   String _temaParaTexto(ThemeMode modo) {
