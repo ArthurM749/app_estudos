@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common_ffi/sqflite_common_ffi.dart' as ffi;
 import 'package:path/path.dart';
+import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart' as ffi_web;
 
 import '../models/conquista.dart';
 import '../models/evento_pontos.dart';
@@ -36,7 +37,9 @@ class DatabaseHelper {
     // Windows ou Linux (ex.: alguém testando direto no notebook, sem
     // celular conectado), troca para a implementação de desktop
     // (sqflite_common_ffi) antes de abrir o banco.
-    if (!kIsWeb && (Platform.isWindows || Platform.isLinux)) {
+     if (kIsWeb) {
+      databaseFactory = ffi_web.databaseFactoryFfiWeb;
+    } else if (Platform.isWindows || Platform.isLinux) {
       ffi.sqfliteFfiInit();
       databaseFactory = ffi.databaseFactoryFfi;
     }
@@ -327,6 +330,11 @@ class DatabaseHelper {
   Future<void> atualizarTema(String tema) async {
     final db = await database;
     await db.update('perfil', {'tema': tema}, where: 'id = 1');
+  }
+   /// Remove só o perfil (usado ao sair da conta); mantém projetos e pontos.
+  Future<void> apagarPerfil() async {
+    final db = await database;
+    await db.delete('perfil');
   }
 
   /// Apaga TUDO: projetos, itens, pontos, conquistas e perfil. Usado
