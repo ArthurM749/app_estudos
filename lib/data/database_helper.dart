@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common_ffi/sqflite_common_ffi.dart' as ffi;
 import 'package:path/path.dart';
+import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart' as ffi_web;
 
 import '../models/conquista.dart';
 import '../models/evento_pontos.dart';
@@ -36,16 +37,19 @@ class DatabaseHelper {
     // Windows ou Linux (ex.: alguém testando direto no notebook, sem
     // celular conectado), troca para a implementação de desktop
     // (sqflite_common_ffi) antes de abrir o banco.
-    if (!kIsWeb && (Platform.isWindows || Platform.isLinux)) {
+     if (kIsWeb) {
+      databaseFactory = ffi_web.databaseFactoryFfiWeb;
+    } else if (Platform.isWindows || Platform.isLinux) {
       ffi.sqfliteFfiInit();
       databaseFactory = ffi.databaseFactoryFfi;
     }
 
     final path = join(await getDatabasesPath(), 'app_estudos.db');
-    return openDatabase(
+     return openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
       // O SQLite não aplica "ON DELETE SET NULL" (usado na tabela de
       // itens) a menos que isso seja ligado explicitamente em cada
       // conexão — sem essa linha, excluir um projeto deixaria os
@@ -54,6 +58,13 @@ class DatabaseHelper {
         await db.execute('PRAGMA foreign_keys = ON');
       },
     );
+  }
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await db.execute(
+          "ALTER TABLE perfil ADD COLUMN tema TEXT NOT NULL DEFAULT 'claro'");
+      await db.execute('ALTER TABLE perfil ADD COLUMN criado_em TEXT');
+    }
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -285,12 +296,13 @@ class DatabaseHelper {
   // Perfil local (opcional)
   // ---------------------------------------------------------------
 
-  Future<void> salvarPerfil({
+   Future<void> salvarPerfil({
     String? nome,
     String? email,
     required bool pulou,
   }) async {
     final db = await database;
+    final existente = await obterPerfil();
     await db.insert(
       'perfil',
       {
@@ -298,6 +310,7 @@ class DatabaseHelper {
         'nome': nome,
         'email': email,
         'pulou': pulou ? 1 : 0,
+        'tema': existente?['tema'] ?? 'claro',
         'criado_em': DateTime.now().toIso8601String(),
       },
       conflictAlgorithm: ConflictAlgorithm.replace,
@@ -317,6 +330,11 @@ class DatabaseHelper {
   Future<void> atualizarTema(String tema) async {
     final db = await database;
     await db.update('perfil', {'tema': tema}, where: 'id = 1');
+  }
+   /// Remove só o perfil (usado ao sair da conta); mantém projetos e pontos.
+  Future<void> apagarPerfil() async {
+    final db = await database;
+    await db.delete('perfil');
   }
 
   /// Apaga TUDO: projetos, itens, pontos, conquistas e perfil. Usado

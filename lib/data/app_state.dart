@@ -6,6 +6,7 @@ import '../models/item.dart';
 import '../models/projeto.dart';
 import 'database_helper.dart';
 import 'regras_pontos.dart';
+import 'auth_service.dart';
 
 /// Estado global do app: projetos, pontos, nível, conquistas, tema e
 /// perfil local.
@@ -93,6 +94,7 @@ class AppState extends ChangeNotifier {
 
   Future<void> criarPerfil({required String nome, required String email}) async {
     await _db.salvarPerfil(nome: nome, email: email, pulou: false);
+    await _db.atualizarTema(_temaParaTexto(tema));
     nomeUsuario = nome;
     emailUsuario = email;
     perfilCriadoEm = DateTime.now();
@@ -102,15 +104,34 @@ class AppState extends ChangeNotifier {
 
   Future<void> continuarSemConta() async {
     await _db.salvarPerfil(pulou: true);
+    await _db.atualizarTema(_temaParaTexto(tema));
     perfilCriadoEm = DateTime.now();
     onboardingConcluido = true;
     notifyListeners();
   }
 
+  /// Sai da conta (ou volta pra tela de login, se estava sem conta).
+  /// Os dados de estudo continuam salvos no aparelho.
+  Future<void> sair() async {
+    try {
+      await AuthService.instance.sair();
+    } catch (_) {}
+    await _db.apagarPerfil();
+    nomeUsuario = null;
+    emailUsuario = null;
+    perfilCriadoEm = null;
+    onboardingConcluido = false;
+    notifyListeners();
+  }
+
   Future<void> definirTema(ThemeMode modo) async {
     tema = modo;
-    await _db.atualizarTema(_temaParaTexto(modo));
     notifyListeners();
+    try {
+      await _db.atualizarTema(_temaParaTexto(modo));
+    } catch (e) {
+      debugPrint('Erro ao salvar tema: $e');
+    }
   }
 
   String _temaParaTexto(ThemeMode modo) {
@@ -138,6 +159,9 @@ class AppState extends ChangeNotifier {
   /// Apaga tudo (projetos, itens, pontos, conquistas e perfil) e
   /// volta o app pro estado de primeira abertura.
   Future<void> apagarTudo() async {
+     try {
+      await AuthService.instance.sair();
+    } catch (_) {}
     await _db.apagarTudo();
     projetos = [];
     progressoPorProjeto = {};

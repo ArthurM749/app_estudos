@@ -227,6 +227,15 @@ class PerfilScreen extends StatelessWidget {
                 const SizedBox(height: 12),
                 SizedBox(
                   width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () => context.read<AppState>().sair(),
+                    icon: const Icon(Icons.logout),
+                    label: Text(temConta ? 'Sair da conta' : 'Entrar ou criar conta'),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
                   child: FilledButton.icon(
                     style: FilledButton.styleFrom(
                       backgroundColor: Theme.of(context).colorScheme.errorContainer,
