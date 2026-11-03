@@ -6,19 +6,13 @@ import '../models/projeto.dart';
 import '../screens/projeto_detalhe_screen.dart';
 
 const coresDeProjeto = [
-  Colors.indigo,
-  Colors.teal,
-  Colors.deepOrange,
-  Colors.purple,
-  Colors.green,
-  Colors.pink,
+  Color(0xFF536173),
+  Color(0xFF8593A6),
+  Color(0xFF737373),
+  Color(0xFFA6A6A6),
+  Color(0xFFD9D9D9),
 ];
 
-/// Abre o formulário de criar (ou editar, quando [projetoExistente] é
-/// passado) um projeto: nome, cor e o modo de progresso (manual ou
-/// por tarefas). Usado tanto na tela de Projetos quanto no atalho
-/// "Novo projeto" do Início e no botão de editar do detalhe do
-/// projeto — assim o comportamento é sempre o mesmo em todo o app.
 Future<void> abrirDialogoProjeto(
   BuildContext context, {
   Projeto? projetoExistente,
@@ -28,10 +22,11 @@ Future<void> abrirDialogoProjeto(
   var corEscolhida = projetoExistente != null
       ? coresDeProjeto.firstWhere(
           (c) => c.value == projetoExistente.cor,
-          orElse: () => coresDeProjeto.first,
+          orElse: () => coresDeProjeto[1],
         )
       : coresDeProjeto.first;
-  var modoEscolhido = projetoExistente?.modoProgresso ?? ModoProgresso.porTarefas;
+  var modoEscolhido =
+      projetoExistente?.modoProgresso ?? ModoProgresso.porTarefas;
 
   final confirmou = await showDialog<bool>(
     context: context,
@@ -39,7 +34,8 @@ Future<void> abrirDialogoProjeto(
       return StatefulBuilder(
         builder: (dialogContext, setStateDialog) {
           return AlertDialog(
-            title: Text(projetoExistente == null ? 'Novo projeto' : 'Editar projeto'),
+            title: Text(
+                projetoExistente == null ? 'Novo projeto' : 'Editar projeto'),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -48,7 +44,8 @@ Future<void> abrirDialogoProjeto(
                   TextField(
                     controller: controller,
                     autofocus: true,
-                    decoration: const InputDecoration(labelText: 'Nome do projeto'),
+                    decoration:
+                        const InputDecoration(labelText: 'Nome do projeto'),
                     onChanged: (_) => setStateDialog(() {}),
                   ),
                   const SizedBox(height: 16),
@@ -62,21 +59,29 @@ Future<void> abrirDialogoProjeto(
                           backgroundColor: cor,
                           radius: selecionada ? 18 : 14,
                           child: selecionada
-                              ? const Icon(Icons.check, color: Colors.white, size: 16)
+                              ? Icon(
+                                  Icons.check,
+                                  color: cor.computeLuminance() > 0.45
+                                      ? Colors.black
+                                      : Colors.white,
+                                  size: 16,
+                                )
                               : null,
                         ),
                       );
                     }).toList(),
                   ),
                   const SizedBox(height: 16),
-                  const Text('Progresso definido por', style: TextStyle(fontWeight: FontWeight.w600)),
+                  const Text('Progresso definido por',
+                      style: TextStyle(fontWeight: FontWeight.w600)),
                   RadioListTile<ModoProgresso>(
                     contentPadding: EdgeInsets.zero,
                     dense: true,
                     title: const Text('Tarefas concluídas (automático)'),
                     value: ModoProgresso.porTarefas,
                     groupValue: modoEscolhido,
-                    onChanged: (valor) => setStateDialog(() => modoEscolhido = valor!),
+                    onChanged: (valor) =>
+                        setStateDialog(() => modoEscolhido = valor!),
                   ),
                   RadioListTile<ModoProgresso>(
                     contentPadding: EdgeInsets.zero,
@@ -84,7 +89,8 @@ Future<void> abrirDialogoProjeto(
                     title: const Text('Manual (arrastar a barrinha)'),
                     value: ModoProgresso.manual,
                     groupValue: modoEscolhido,
-                    onChanged: (valor) => setStateDialog(() => modoEscolhido = valor!),
+                    onChanged: (valor) =>
+                        setStateDialog(() => modoEscolhido = valor!),
                   ),
                 ],
               ),
@@ -119,7 +125,8 @@ Future<void> abrirDialogoProjeto(
     );
     if (context.mounted) {
       Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => ProjetoDetalheScreen(projetoId: criado.id!)),
+        MaterialPageRoute(
+            builder: (_) => ProjetoDetalheScreen(projetoId: criado.id!)),
       );
     }
   } else {
@@ -132,8 +139,8 @@ Future<void> abrirDialogoProjeto(
   }
 }
 
-/// Pede confirmação e exclui o projeto. Devolve `true` se excluiu.
-Future<bool> confirmarExclusaoProjeto(BuildContext context, Projeto projeto) async {
+Future<bool> confirmarExclusaoProjeto(
+    BuildContext context, Projeto projeto) async {
   final confirmou = await showDialog<bool>(
     context: context,
     builder: (dialogContext) => AlertDialog(

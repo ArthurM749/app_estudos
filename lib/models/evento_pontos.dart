@@ -1,8 +1,3 @@
-/// A ação que gerou pontos para o usuário.
-///
-/// Os valores de pontos por ação ficam centralizados em
-/// `RegrasDePontos` (lib/data/regras_pontos.dart), não aqui — este
-/// enum só identifica QUAL ação aconteceu.
 enum TipoAcao {
   criarProjeto,
   criarAnotacao,
@@ -10,10 +5,6 @@ enum TipoAcao {
   concluirProjeto,
 }
 
-/// Um registro histórico de pontos ganhos.
-///
-/// A soma desses eventos por dia/semana é o que alimenta o
-/// dashboard (pontos de hoje x ontem) e a tela de progresso.
 class EventoDePontos {
   final int? id;
   final TipoAcao tipo;

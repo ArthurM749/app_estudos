@@ -1,27 +1,17 @@
-/// Como a porcentagem de um [Projeto] é calculada.
 enum ModoProgresso {
-  /// O usuário arrasta a barrinha e define o valor na mão.
   manual,
 
-  /// O progresso é a razão entre tarefas concluídas e tarefas totais
-  /// do projeto.
   porTarefas,
 }
 
-/// Uma pasta de estudo: agrupa anotações e tarefas sobre um mesmo
-/// assunto (ex.: "Estruturas de Dados", "TCC").
 class Projeto {
   final int? id;
   final String nome;
 
-  /// Cor do cartão do projeto, em formato ARGB (0xFFRRGGBB).
   final int cor;
 
   final ModoProgresso modoProgresso;
 
-  /// Progresso de 0 a 100. Só é usado quando [modoProgresso] é
-  /// [ModoProgresso.manual] — no modo por tarefas, o valor é
-  /// calculado na hora a partir dos itens do projeto.
   final int progressoManual;
 
   final bool arquivado;

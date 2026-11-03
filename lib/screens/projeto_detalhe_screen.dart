@@ -8,15 +8,6 @@ import '../models/projeto.dart';
 import '../widgets/dialogo_projeto.dart';
 import 'anotacao_editor_screen.dart';
 
-/// Detalhe de um projeto: progresso no topo (com controle manual
-/// quando aplicável), checklist de tarefas (adicionar/concluir/
-/// excluir direto aqui) e a lista de anotações do projeto.
-///
-/// Recebe só o [projetoId] (não o `Projeto` inteiro) e busca o
-/// projeto atual direto do `AppState` a cada rebuild — assim, se ele
-/// for editado ou excluído em outra tela, esta tela acompanha (ou
-/// fecha sozinha, no caso de exclusão) em vez de mostrar dados
-/// velhos.
 class ProjetoDetalheScreen extends StatefulWidget {
   final int projetoId;
 
@@ -75,7 +66,8 @@ class _ProjetoDetalheScreenState extends State<ProjetoDetalheScreen> {
   Future<void> _novaAnotacao() async {
     final criou = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
-        builder: (_) => AnotacaoEditorScreen(projetoIdInicial: widget.projetoId),
+        builder: (_) =>
+            AnotacaoEditorScreen(projetoIdInicial: widget.projetoId),
       ),
     );
     if (criou == true && mounted) setState(_recarregarItens);
@@ -99,12 +91,10 @@ class _ProjetoDetalheScreenState extends State<ProjetoDetalheScreen> {
   Widget build(BuildContext context) {
     return Consumer<AppState>(
       builder: (context, appState, _) {
-        final indice = appState.projetos.indexWhere((p) => p.id == widget.projetoId);
+        final indice =
+            appState.projetos.indexWhere((p) => p.id == widget.projetoId);
 
         if (indice == -1) {
-          // O projeto foi excluído (por esta tela ou por outra) —
-          // fecha sozinha em vez de mostrar uma tela com dados
-          // inválidos.
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted && Navigator.of(context).canPop()) {
               Navigator.of(context).pop();
@@ -122,7 +112,8 @@ class _ProjetoDetalheScreenState extends State<ProjetoDetalheScreen> {
             actions: [
               IconButton(
                 icon: const Icon(Icons.edit_outlined),
-                onPressed: () => abrirDialogoProjeto(context, projetoExistente: projeto),
+                onPressed: () =>
+                    abrirDialogoProjeto(context, projetoExistente: projeto),
               ),
               IconButton(
                 icon: const Icon(Icons.delete_outline),
@@ -282,7 +273,8 @@ class _CartaoProgresso extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Progresso', style: TextStyle(fontWeight: FontWeight.w600)),
+                const Text('Progresso',
+                    style: TextStyle(fontWeight: FontWeight.w600)),
                 Text(
                   '$progresso%',
                   style: Theme.of(context)
@@ -295,7 +287,8 @@ class _CartaoProgresso extends StatelessWidget {
             const SizedBox(height: 8),
             ClipRRect(
               borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(value: progresso / 100, minHeight: 8),
+              child:
+                  LinearProgressIndicator(value: progresso / 100, minHeight: 8),
             ),
             const SizedBox(height: 6),
             Text(
@@ -315,7 +308,9 @@ class _CartaoProgresso extends StatelessWidget {
                 label: '$progresso%',
                 onChanged: (valor) {
                   if (projeto.id != null) {
-                    context.read<AppState>().definirProgressoManual(projeto.id!, valor.round());
+                    context
+                        .read<AppState>()
+                        .definirProgressoManual(projeto.id!, valor.round());
                   }
                 },
               ),
@@ -326,10 +321,6 @@ class _CartaoProgresso extends StatelessWidget {
   }
 }
 
-/// Uma linha de tarefa no checklist: círculo pra concluir (vira
-/// ✓ preenchido), título com risco quando concluída, e um X
-/// discreto pra excluir na hora, sem confirmação — é só um item de
-/// checklist, não uma anotação.
 class _LinhaDeTarefa extends StatelessWidget {
   final Item tarefa;
   final VoidCallback aoAlternar;

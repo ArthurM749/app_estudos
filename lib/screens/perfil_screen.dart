@@ -5,8 +5,6 @@ import '../data/app_state.dart';
 import '../models/conquista.dart';
 import '../utils/formatadores.dart';
 
-/// Ícone de cada conquista. Fica aqui (e não no model) pra manter
-/// `Conquista` livre de dependência do Flutter.
 const Map<String, IconData> _iconesConquistas = {
   'primeira_anotacao': Icons.edit_note,
   'arquiteto': Icons.architecture,
@@ -21,9 +19,6 @@ const Map<String, IconData> _iconesConquistas = {
   'dedicado': Icons.emoji_events,
 };
 
-/// Perfil: avatar e dados do usuário (ou "modo convidado"),
-/// estatísticas, grade de conquistas, aparência (tema) e a opção de
-/// apagar todos os dados do aparelho.
 class PerfilScreen extends StatelessWidget {
   const PerfilScreen({super.key});
 
@@ -48,8 +43,8 @@ class PerfilScreen extends StatelessWidget {
                         radius: 36,
                         child: Text(
                           inicial,
-                          style:
-                              const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                          style: const TextStyle(
+                              fontSize: 28, fontWeight: FontWeight.bold),
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -66,16 +61,21 @@ class PerfilScreen extends StatelessWidget {
                             ? (appState.emailUsuario ?? '')
                             : 'Modo convidado · sem conta',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
                             ),
                       ),
                       if (desde != null) ...[
                         const SizedBox(height: 2),
                         Text(
                           'Estudando desde ${formatarMesAno(desde)}',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                              ),
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant,
+                                  ),
                         ),
                       ],
                     ],
@@ -85,7 +85,8 @@ class PerfilScreen extends StatelessWidget {
                 Row(
                   children: [
                     Expanded(
-                      child: _Estatistica(valor: '${appState.pontosTotais}', rotulo: 'pontos'),
+                      child: _Estatistica(
+                          valor: '${appState.pontosTotais}', rotulo: 'pontos'),
                     ),
                     Expanded(
                       child: _Estatistica(
@@ -94,7 +95,8 @@ class PerfilScreen extends StatelessWidget {
                       ),
                     ),
                     Expanded(
-                      child: _Estatistica(valor: '${appState.nivel}', rotulo: 'nível'),
+                      child: _Estatistica(
+                          valor: '${appState.nivel}', rotulo: 'nível'),
                     ),
                   ],
                 ),
@@ -181,7 +183,8 @@ class PerfilScreen extends StatelessWidget {
                       'numa fase seguinte do projeto.',
                     ),
                     trailing: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: Theme.of(context).colorScheme.secondaryContainer,
                         borderRadius: BorderRadius.circular(8),
@@ -191,7 +194,9 @@ class PerfilScreen extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
-                          color: Theme.of(context).colorScheme.onSecondaryContainer,
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSecondaryContainer,
                         ),
                       ),
                     ),
@@ -211,7 +216,8 @@ class PerfilScreen extends StatelessWidget {
                     padding: const EdgeInsets.all(16),
                     child: Row(
                       children: [
-                        Icon(Icons.phone_iphone, color: Theme.of(context).colorScheme.primary),
+                        Icon(Icons.phone_iphone,
+                            color: Theme.of(context).colorScheme.primary),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
@@ -230,7 +236,8 @@ class PerfilScreen extends StatelessWidget {
                   child: OutlinedButton.icon(
                     onPressed: () => context.read<AppState>().sair(),
                     icon: const Icon(Icons.logout),
-                    label: Text(temConta ? 'Sair da conta' : 'Entrar ou criar conta'),
+                    label: Text(
+                        temConta ? 'Sair da conta' : 'Entrar ou criar conta'),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -238,8 +245,10 @@ class PerfilScreen extends StatelessWidget {
                   width: double.infinity,
                   child: FilledButton.icon(
                     style: FilledButton.styleFrom(
-                      backgroundColor: Theme.of(context).colorScheme.errorContainer,
-                      foregroundColor: Theme.of(context).colorScheme.onErrorContainer,
+                      backgroundColor:
+                          Theme.of(context).colorScheme.errorContainer,
+                      foregroundColor:
+                          Theme.of(context).colorScheme.onErrorContainer,
                     ),
                     onPressed: () => _confirmarApagarTudo(context),
                     icon: const Icon(Icons.delete_forever_outlined),
@@ -321,7 +330,8 @@ class _CartaoConquista extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cores = Theme.of(context).colorScheme;
-    final icone = _iconesConquistas[conquista.id] ?? Icons.emoji_events_outlined;
+    final icone =
+        _iconesConquistas[conquista.id] ?? Icons.emoji_events_outlined;
 
     return Tooltip(
       message: '${conquista.nome}\n${conquista.descricao}',

@@ -12,9 +12,6 @@ import '../widgets/erro_de_carregamento.dart';
 import '../widgets/grafico_pontos_semana.dart';
 import 'anotacao_editor_screen.dart';
 
-/// Tela de Início: saudação com avatar, sequência de dias + pontos
-/// de hoje, nível, gráfico semanal interativo e atalhos pros
-/// projetos e anotações mais recentes.
 class HomeScreen extends StatelessWidget {
   final VoidCallback? aoTocarProjetos;
   final VoidCallback? aoTocarAnotacoes;
@@ -80,7 +77,8 @@ class HomeScreen extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
                                   Expanded(
                                     child: Text(
@@ -88,10 +86,12 @@ class HomeScreen extends StatelessWidget {
                                       style: Theme.of(context)
                                           .textTheme
                                           .titleMedium
-                                          ?.copyWith(fontWeight: FontWeight.bold),
+                                          ?.copyWith(
+                                              fontWeight: FontWeight.bold),
                                     ),
                                   ),
-                                  Text('$pontosDentroDoNivel/$pontosParaProximo pts'),
+                                  Text(
+                                      '$pontosDentroDoNivel/$pontosParaProximo pts'),
                                 ],
                               ),
                               const SizedBox(height: 8),
@@ -149,7 +149,8 @@ class HomeScreen extends StatelessWidget {
                           Expanded(
                             child: FilledButton.icon(
                               onPressed: () => abrirDialogoProjeto(context),
-                              icon: const Icon(Icons.create_new_folder_outlined),
+                              icon:
+                                  const Icon(Icons.create_new_folder_outlined),
                               label: const Text('Novo projeto'),
                             ),
                           ),
@@ -164,7 +165,8 @@ class HomeScreen extends StatelessWidget {
                       const SizedBox(height: 8),
                       if (appState.projetos.isEmpty)
                         const _CartaoVazio(
-                          mensagem: 'Nenhum projeto ainda. Crie o primeiro acima.',
+                          mensagem:
+                              'Nenhum projeto ainda. Crie o primeiro acima.',
                         )
                       else
                         ...appState.projetos.take(3).map((projeto) {
@@ -173,7 +175,8 @@ class HomeScreen extends StatelessWidget {
                           return Card(
                             margin: const EdgeInsets.only(bottom: 10),
                             child: ListTile(
-                              leading: CircleAvatar(backgroundColor: Color(projeto.cor)),
+                              leading: CircleAvatar(
+                                  backgroundColor: Color(projeto.cor)),
                               title: Text(projeto.nome),
                               subtitle: Padding(
                                 padding: const EdgeInsets.only(top: 6),
@@ -197,7 +200,8 @@ class HomeScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 8),
                       FutureBuilder<List<Item>>(
-                        future: DatabaseHelper.instance.listarAnotacoesRecentes(),
+                        future:
+                            DatabaseHelper.instance.listarAnotacoesRecentes(),
                         builder: (context, snapshot) {
                           if (!snapshot.hasData) {
                             return const Padding(
@@ -233,8 +237,8 @@ class HomeScreen extends StatelessWidget {
                                         ),
                                   onTap: () => Navigator.of(context).push(
                                     MaterialPageRoute(
-                                      builder: (_) =>
-                                          AnotacaoEditorScreen(itemExistente: item),
+                                      builder: (_) => AnotacaoEditorScreen(
+                                          itemExistente: item),
                                     ),
                                   ),
                                 ),
@@ -312,7 +316,7 @@ class _CartaoSequenciaEPontosHoje extends StatelessWidget {
   Widget build(BuildContext context) {
     final cores = Theme.of(context).colorScheme;
     return Card(
-      color: cores.primary,
+      color: cores.surface,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Row(
@@ -322,16 +326,17 @@ class _CartaoSequenciaEPontosHoje extends StatelessWidget {
                 icone: Icons.local_fire_department,
                 valor: '$sequenciaDias',
                 rotulo: sequenciaDias == 1 ? 'dia seguido' : 'dias seguidos',
-                corTexto: cores.onPrimary,
+                corTexto: cores.onSurface,
               ),
             ),
-            Container(width: 1, height: 36, color: cores.onPrimary.withOpacity(0.3)),
+            Container(
+                width: 1, height: 36, color: cores.outline.withOpacity(0.45)),
             Expanded(
               child: _ValorDoCartao(
                 icone: Icons.bolt,
                 valor: '$pontosHoje',
                 rotulo: 'pontos hoje',
-                corTexto: cores.onPrimary,
+                corTexto: cores.onSurface,
               ),
             ),
           ],
@@ -358,11 +363,12 @@ class _ValorDoCartao extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Icon(icone, color: corTexto),
+        Icon(icone, color: Theme.of(context).colorScheme.tertiary),
         const SizedBox(height: 4),
         Text(
           valor,
-          style: TextStyle(color: corTexto, fontSize: 22, fontWeight: FontWeight.bold),
+          style: TextStyle(
+              color: corTexto, fontSize: 22, fontWeight: FontWeight.bold),
         ),
         Text(rotulo, style: TextStyle(color: corTexto, fontSize: 12)),
       ],

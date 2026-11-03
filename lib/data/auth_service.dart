@@ -1,6 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-/// Camada fina em cima do Supabase Auth (email + senha).
 class AuthService {
   AuthService._();
   static final AuthService instance = AuthService._();

@@ -3,14 +3,6 @@ import 'package:flutter/material.dart';
 
 const _diasDaSemana = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
 
-/// Gráfico de colunas com os pontos ganhos em cada dia da semana
-/// atual (segunda a domingo), com um rótulo acima mostrando o dia
-/// selecionado (toque numa coluna pra trocar) e o total da semana —
-/// igual ao "Qua: 0 pts" / "25 pts na semana" da referência.
-///
-/// [pontosPorDia] precisa ter exatamente 7 valores, na mesma ordem
-/// dos dias (índice 0 = segunda). [indiceHoje] é o que começa
-/// selecionado.
 class GraficoPontosSemana extends StatefulWidget {
   final List<int> pontosPorDia;
   final int indiceHoje;
@@ -31,17 +23,13 @@ class _GraficoPontosSemanaState extends State<GraficoPontosSemana> {
   @override
   void didUpdateWidget(covariant GraficoPontosSemana oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Se o dia de hoje mudou (ex.: virou meia-noite) e a pessoa não
-    // tinha escolhido outro dia manualmente, acompanha o novo hoje.
+
     if (oldWidget.indiceHoje != widget.indiceHoje &&
         _indiceSelecionado == oldWidget.indiceHoje) {
       _indiceSelecionado = widget.indiceHoje;
     }
   }
 
-  /// Degrau "limpo" (5, 10, 20, 25, 50, 100...) pra separar as
-  /// marcações do eixo Y, escolhido de forma que caibam uns 4 a 6
-  /// números até cobrir [maiorValor] com folga.
   int _intervaloLimpo(int maiorValor) {
     const candidatos = [5, 10, 20, 25, 50, 100, 200, 250, 500, 1000];
     final alvo = maiorValor * 1.25;
@@ -54,15 +42,10 @@ class _GraficoPontosSemanaState extends State<GraficoPontosSemana> {
   @override
   Widget build(BuildContext context) {
     final cores = Theme.of(context).colorScheme;
-    final totalSemana =
-        widget.pontosPorDia.fold<int>(0, (soma, v) => soma + v);
+    final totalSemana = widget.pontosPorDia.fold<int>(0, (soma, v) => soma + v);
     final maiorValor =
         widget.pontosPorDia.fold<int>(0, (maior, v) => v > maior ? v : maior);
 
-    // O teto precisa ser um múltiplo exato do intervalo das marcações
-    // do eixo — senão o fl_chart desenha um rótulo extra bem no valor
-    // do teto (quase sempre quebrado, tipo "43.75") além dos rótulos
-    // "redondos" (0, 10, 20...), e os dois acabam se sobrepondo.
     final intervalo = _intervaloLimpo(maiorValor);
     final double teto = maiorValor == 0
         ? intervalo.toDouble()
@@ -105,8 +88,8 @@ class _GraficoPontosSemanaState extends State<GraficoPontosSemana> {
                   getTooltipItem: (group, groupIndex, rod, rodIndex) {
                     return BarTooltipItem(
                       '${rod.toY.round()} pts',
-                      const TextStyle(
-                        color: Colors.white,
+                      TextStyle(
+                        color: cores.onInverseSurface,
                         fontWeight: FontWeight.bold,
                       ),
                     );
@@ -128,16 +111,13 @@ class _GraficoPontosSemanaState extends State<GraficoPontosSemana> {
                   sideTitles: SideTitles(
                     showTitles: true,
                     reservedSize: 32,
-                    // Intervalo fixo (em vez de deixar o fl_chart
-                    // calcular sozinho) é o que evita o rótulo extra
-                    // sobreposto — ver o comentário no cálculo do
-                    // teto, acima.
                     interval: intervalo.toDouble(),
                     getTitlesWidget: (valor, meta) {
-                      // Sempre número inteiro, mesmo que o valor
-                      // interno do fl_chart seja double (pontos nunca
-                      // são fracionados no app).
-                      return Text(valor.round().toString());
+                      return Text(
+                        valor.round().toString(),
+                        style: TextStyle(
+                            color: cores.onSurfaceVariant, fontSize: 11),
+                      );
                     },
                   ),
                 ),
@@ -155,9 +135,10 @@ class _GraficoPontosSemanaState extends State<GraficoPontosSemana> {
                         child: Text(
                           _diasDaSemana[indice],
                           style: TextStyle(
-                            fontWeight:
-                                selecionado ? FontWeight.bold : FontWeight.normal,
-                            color: selecionado ? cores.primary : null,
+                            fontWeight: selecionado
+                                ? FontWeight.bold
+                                : FontWeight.normal,
+                            color: selecionado ? cores.tertiary : null,
                           ),
                         ),
                       );
@@ -176,8 +157,8 @@ class _GraficoPontosSemanaState extends State<GraficoPontosSemana> {
                       width: 20,
                       borderRadius: BorderRadius.circular(4),
                       color: selecionado
-                          ? cores.primary
-                          : cores.primary.withOpacity(0.35),
+                          ? cores.tertiary
+                          : cores.secondary.withOpacity(0.95),
                     ),
                   ],
                 );

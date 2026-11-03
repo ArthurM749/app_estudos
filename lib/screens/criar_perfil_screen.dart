@@ -3,17 +3,12 @@ import 'package:provider/provider.dart';
 
 import '../data/app_state.dart';
 
-/// Primeira tela que o usuário vê, antes de qualquer coisa: criar um
-/// perfil local (nome + email) ou seguir sem conta.
-///
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../data/app_state.dart';
 import '../data/auth_service.dart';
 
-/// Primeira tela do app: entrar ou criar conta (Supabase) ou seguir
-/// sem conta. Os estudos ficam salvos no aparelho de qualquer jeito.
 class CriarPerfilScreen extends StatefulWidget {
   const CriarPerfilScreen({super.key});
 
@@ -58,7 +53,6 @@ class _CriarPerfilScreenState extends State<CriarPerfilScreen> {
         final resposta = await AuthService.instance
             .cadastrar(nome: nome, email: email, senha: senha);
 
-        // Sem sessão = o Supabase está exigindo confirmação por email.
         if (resposta.session == null) {
           if (!mounted) return;
           setState(() {
@@ -78,7 +72,6 @@ class _CriarPerfilScreenState extends State<CriarPerfilScreen> {
             : email.split('@').first;
         await appState.criarPerfil(nome: nome, email: email);
       }
-      // Daqui em diante a PortaDeEntrada troca a tela sozinha.
     } catch (e) {
       if (!mounted) return;
       setState(() => _salvando = false);
@@ -200,7 +193,8 @@ class _CriarPerfilScreenState extends State<CriarPerfilScreen> {
                     TextButton(
                       onPressed: _salvando
                           ? null
-                          : () => setState(() => _modoCadastro = !_modoCadastro),
+                          : () =>
+                              setState(() => _modoCadastro = !_modoCadastro),
                       child: Text(_modoCadastro
                           ? 'Já tenho conta — entrar'
                           : 'Não tenho conta — criar uma'),

@@ -3,9 +3,6 @@ import 'package:provider/provider.dart';
 
 import '../data/app_state.dart';
 
-/// Mostrado no lugar do conteúdo da tela quando `AppState.erro` não
-/// é nulo — evita que a tela fique girando pra sempre quando o
-/// carregamento falha.
 class ErroDeCarregamento extends StatelessWidget {
   final String mensagem;
 

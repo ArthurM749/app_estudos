@@ -6,15 +6,6 @@ import '../data/regras_pontos.dart';
 import '../models/evento_pontos.dart';
 import '../models/item.dart';
 
-/// Editor de anotação: título, conteúdo, projeto (opcional) e a
-/// chave público/privado. Serve tanto para criar quanto para editar
-/// — quem chamar passando [itemExistente] entra no modo edição.
-///
-/// Tarefas não passam mais por aqui: são criadas, concluídas e
-/// excluídas direto na tela de detalhe do projeto (lista simples).
-///
-/// Devolve `true` via [Navigator.pop] quando algo foi salvo OU
-/// excluído, pra quem chamou saber que precisa recarregar a lista.
 class AnotacaoEditorScreen extends StatefulWidget {
   final int? projetoIdInicial;
   final Item? itemExistente;
@@ -59,9 +50,7 @@ class _AnotacaoEditorScreenState extends State<AnotacaoEditorScreen> {
 
     if (_editando) {
       final atual = widget.itemExistente!;
-      // Construído na mão (em vez de copyWith) porque o projeto pode
-      // estar sendo removido da anotação (virar null) — copyWith não
-      // consegue distinguir "não mudei" de "mudei pra null".
+
       final atualizado = Item(
         id: atual.id,
         projetoId: _projetoIdSelecionado,
