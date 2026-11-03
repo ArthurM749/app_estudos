@@ -6,12 +6,11 @@ import '../models/projeto.dart';
 import '../screens/projeto_detalhe_screen.dart';
 
 const coresDeProjeto = [
-  Colors.indigo,
-  Colors.teal,
-  Colors.deepOrange,
-  Colors.purple,
-  Colors.green,
-  Colors.pink,
+  Color(0xFF536173), // azul-acinzentado escuro
+  Color(0xFF8593A6), // azul-acinzentado claro
+  Color(0xFF737373), // cinza médio
+  Color(0xFFA6A6A6), // cinza claro
+  Color(0xFFD9D9D9), // prata
 ];
 
 /// Abre o formulário de criar (ou editar, quando [projetoExistente] é
@@ -28,7 +27,7 @@ Future<void> abrirDialogoProjeto(
   var corEscolhida = projetoExistente != null
       ? coresDeProjeto.firstWhere(
           (c) => c.value == projetoExistente.cor,
-          orElse: () => coresDeProjeto.first,
+          orElse: () => coresDeProjeto[1],
         )
       : coresDeProjeto.first;
   var modoEscolhido = projetoExistente?.modoProgresso ?? ModoProgresso.porTarefas;
@@ -62,7 +61,13 @@ Future<void> abrirDialogoProjeto(
                           backgroundColor: cor,
                           radius: selecionada ? 18 : 14,
                           child: selecionada
-                              ? const Icon(Icons.check, color: Colors.white, size: 16)
+                              ? Icon(
+                                  Icons.check,
+                                  color: cor.computeLuminance() > 0.45
+                                      ? Colors.black
+                                      : Colors.white,
+                                  size: 16,
+                                )
                               : null,
                         ),
                       );

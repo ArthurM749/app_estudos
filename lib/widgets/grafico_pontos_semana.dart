@@ -105,8 +105,8 @@ class _GraficoPontosSemanaState extends State<GraficoPontosSemana> {
                   getTooltipItem: (group, groupIndex, rod, rodIndex) {
                     return BarTooltipItem(
                       '${rod.toY.round()} pts',
-                      const TextStyle(
-                        color: Colors.white,
+                      TextStyle(
+                        color: cores.onInverseSurface,
                         fontWeight: FontWeight.bold,
                       ),
                     );
@@ -137,7 +137,10 @@ class _GraficoPontosSemanaState extends State<GraficoPontosSemana> {
                       // Sempre número inteiro, mesmo que o valor
                       // interno do fl_chart seja double (pontos nunca
                       // são fracionados no app).
-                      return Text(valor.round().toString());
+                      return Text(
+                        valor.round().toString(),
+                        style: TextStyle(color: cores.onSurfaceVariant, fontSize: 11),
+                      );
                     },
                   ),
                 ),
@@ -157,7 +160,7 @@ class _GraficoPontosSemanaState extends State<GraficoPontosSemana> {
                           style: TextStyle(
                             fontWeight:
                                 selecionado ? FontWeight.bold : FontWeight.normal,
-                            color: selecionado ? cores.primary : null,
+                            color: selecionado ? cores.tertiary : null,
                           ),
                         ),
                       );
@@ -176,8 +179,8 @@ class _GraficoPontosSemanaState extends State<GraficoPontosSemana> {
                       width: 20,
                       borderRadius: BorderRadius.circular(4),
                       color: selecionado
-                          ? cores.primary
-                          : cores.primary.withOpacity(0.35),
+                          ? cores.tertiary
+                          : cores.secondary.withOpacity(0.95),
                     ),
                   ],
                 );

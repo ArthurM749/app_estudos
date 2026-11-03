@@ -312,7 +312,9 @@ class _CartaoSequenciaEPontosHoje extends StatelessWidget {
   Widget build(BuildContext context) {
     final cores = Theme.of(context).colorScheme;
     return Card(
-      color: cores.primary,
+      // O cartão da sequência fica destacado pela superfície, não por
+      // uma cor de ação. Assim continua integrado à paleta monocromática.
+      color: cores.surface,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Row(
@@ -322,16 +324,16 @@ class _CartaoSequenciaEPontosHoje extends StatelessWidget {
                 icone: Icons.local_fire_department,
                 valor: '$sequenciaDias',
                 rotulo: sequenciaDias == 1 ? 'dia seguido' : 'dias seguidos',
-                corTexto: cores.onPrimary,
+                corTexto: cores.onSurface,
               ),
             ),
-            Container(width: 1, height: 36, color: cores.onPrimary.withOpacity(0.3)),
+            Container(width: 1, height: 36, color: cores.outline.withOpacity(0.45)),
             Expanded(
               child: _ValorDoCartao(
                 icone: Icons.bolt,
                 valor: '$pontosHoje',
                 rotulo: 'pontos hoje',
-                corTexto: cores.onPrimary,
+                corTexto: cores.onSurface,
               ),
             ),
           ],
@@ -358,7 +360,7 @@ class _ValorDoCartao extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Icon(icone, color: corTexto),
+        Icon(icone, color: Theme.of(context).colorScheme.tertiary),
         const SizedBox(height: 4),
         Text(
           valor,
