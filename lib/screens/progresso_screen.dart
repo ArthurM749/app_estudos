@@ -6,10 +6,6 @@ import '../models/conquista.dart';
 import '../widgets/erro_de_carregamento.dart';
 import '../widgets/grafico_pontos_semana.dart';
 
-/// Nível, pontos da semana e conquistas desbloqueadas e bloqueadas.
-///
-/// Gráfico de pontos por dia/semana com fl_chart fica para depois —
-/// esta versão já mostra os números reais, só sem o gráfico ainda.
 class ProgressoScreen extends StatelessWidget {
   const ProgressoScreen({super.key});
 

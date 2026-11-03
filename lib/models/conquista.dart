@@ -1,8 +1,3 @@
-/// Uma conquista que o usuário pode desbloquear.
-///
-/// As conquistas em si são fixas no app (uma lista pré-definida em
-/// código, [conquistasDisponiveis]); o que muda por usuário é QUANDO
-/// cada uma foi desbloqueada, guardado em [ConquistaDesbloqueada].
 class Conquista {
   final String id;
   final String nome;
@@ -15,7 +10,6 @@ class Conquista {
   });
 }
 
-/// Liga uma [Conquista] ao momento em que o usuário a desbloqueou.
 class ConquistaDesbloqueada {
   final String conquistaId;
   final DateTime desbloqueadaEm;
@@ -40,9 +34,6 @@ class ConquistaDesbloqueada {
   }
 }
 
-/// Lista fixa de conquistas do app. A lógica de quando cada uma é
-/// desbloqueada vive em `AppState._verificarConquistasGerais`
-/// (lib/data/app_state.dart).
 const List<Conquista> conquistasDisponiveis = [
   Conquista(
     id: 'primeira_anotacao',

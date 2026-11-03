@@ -16,8 +16,6 @@ Future<void> main() async {
   runApp(const AppEstudos());
 }
 
-/// Raiz do app. Nome provisório — o grupo ainda não bateu o martelo
-/// no nome final (ver "Riscos e decisões em aberto" no documento).
 class AppEstudos extends StatelessWidget {
   const AppEstudos({super.key});
 

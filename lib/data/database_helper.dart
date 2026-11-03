@@ -11,13 +11,6 @@ import '../models/evento_pontos.dart';
 import '../models/item.dart';
 import '../models/projeto.dart';
 
-/// Acesso ao banco local (sqflite/SQLite) do aplicativo.
-///
-/// Decisão do grupo: na versão teste TUDO fica salvo no dispositivo,
-/// sem login e sem internet — por isso não existe uma tabela de
-/// "usuários" por enquanto; o app assume um usuário local único.
-/// Login, sincronização e nuvem (Firebase) só entram numa fase
-/// seguinte do projeto.
 class DatabaseHelper {
   DatabaseHelper._internal();
   static final DatabaseHelper instance = DatabaseHelper._internal();
@@ -33,11 +26,7 @@ class DatabaseHelper {
   }
 
   Future<Database> _initDatabase() async {
-    // sqflite "puro" só funciona em Android/iOS/macOS. Rodando no
-    // Windows ou Linux (ex.: alguém testando direto no notebook, sem
-    // celular conectado), troca para a implementação de desktop
-    // (sqflite_common_ffi) antes de abrir o banco.
-     if (kIsWeb) {
+    if (kIsWeb) {
       databaseFactory = ffi_web.databaseFactoryFfiWeb;
     } else if (Platform.isWindows || Platform.isLinux) {
       ffi.sqfliteFfiInit();
@@ -45,20 +34,17 @@ class DatabaseHelper {
     }
 
     final path = join(await getDatabasesPath(), 'app_estudos.db');
-     return openDatabase(
+    return openDatabase(
       path,
       version: 2,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
-      // O SQLite não aplica "ON DELETE SET NULL" (usado na tabela de
-      // itens) a menos que isso seja ligado explicitamente em cada
-      // conexão — sem essa linha, excluir um projeto deixaria os
-      // itens dele com um projeto_id "fantasma".
       onConfigure: (db) async {
         await db.execute('PRAGMA foreign_keys = ON');
       },
     );
   }
+
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
       await db.execute(
@@ -112,10 +98,6 @@ class DatabaseHelper {
 
     await db.execute('CREATE INDEX idx_itens_projeto ON itens (projeto_id)');
 
-    // Linha única (id sempre 1): guarda se a pessoa criou um perfil
-    // local (nome + email) ou escolheu continuar sem conta. Não é
-    // autenticação de verdade — isso só existe pra já deixar pronto
-    // pra quando a fase de sincronização ligar de fato numa conta.
     await db.execute('''
       CREATE TABLE perfil (
         id INTEGER PRIMARY KEY CHECK (id = 1),
@@ -128,14 +110,9 @@ class DatabaseHelper {
     ''');
   }
 
-  // ---------------------------------------------------------------
-  // Projetos
-  // ---------------------------------------------------------------
-
   Future<int> inserirProjeto(Projeto projeto) async {
     final db = await database;
-    return db.insert('projetos', projeto.toMap()
-      ..remove('id'));
+    return db.insert('projetos', projeto.toMap()..remove('id'));
   }
 
   Future<List<Projeto>> listarProjetos({bool incluirArquivados = false}) async {
@@ -163,10 +140,6 @@ class DatabaseHelper {
     final db = await database;
     return db.delete('projetos', where: 'id = ?', whereArgs: [id]);
   }
-
-  // ---------------------------------------------------------------
-  // Itens (anotações, tarefas)
-  // ---------------------------------------------------------------
 
   Future<int> inserirItem(Item item) async {
     final db = await database;
@@ -211,8 +184,6 @@ class DatabaseHelper {
     return db.delete('itens', where: 'id = ?', whereArgs: [id]);
   }
 
-  /// Lista global de anotações (não restrita a um projeto), com
-  /// busca por texto e filtro por projeto — usada na aba Anotações.
   Future<List<Item>> listarAnotacoes({
     bool apenasSemProjeto = false,
     int? projetoId,
@@ -256,9 +227,6 @@ class DatabaseHelper {
     return maps.map(Item.fromMap).toList();
   }
 
-  /// Quantos itens de um [tipo] existem (opcionalmente filtrando por
-  /// concluído). Usado pelas conquistas que dependem de contagem
-  /// ("Biblioteca": 10 anotações, "Mãos à obra": 1ª tarefa feita).
   Future<int> contarItens({required TipoItem tipo, bool? concluido}) async {
     final db = await database;
     final condicoes = <String>['tipo = ?'];
@@ -274,29 +242,25 @@ class DatabaseHelper {
     return Sqflite.firstIntValue(resultado) ?? 0;
   }
 
-  /// Progresso de 0 a 100 de um projeto no modo "por tarefas":
-  /// razão entre tarefas concluídas e tarefas totais do projeto.
   Future<int> progressoPorTarefas(int projetoId) async {
     final db = await database;
     final total = Sqflite.firstIntValue(await db.rawQuery(
-      "SELECT COUNT(*) FROM itens WHERE projeto_id = ? AND tipo = 'tarefa'",
-      [projetoId],
-    )) ?? 0;
+          "SELECT COUNT(*) FROM itens WHERE projeto_id = ? AND tipo = 'tarefa'",
+          [projetoId],
+        )) ??
+        0;
     if (total == 0) return 0;
 
     final concluidas = Sqflite.firstIntValue(await db.rawQuery(
-      "SELECT COUNT(*) FROM itens WHERE projeto_id = ? AND tipo = 'tarefa' AND concluido = 1",
-      [projetoId],
-    )) ?? 0;
+          "SELECT COUNT(*) FROM itens WHERE projeto_id = ? AND tipo = 'tarefa' AND concluido = 1",
+          [projetoId],
+        )) ??
+        0;
 
     return ((concluidas / total) * 100).round();
   }
 
-  // ---------------------------------------------------------------
-  // Perfil local (opcional)
-  // ---------------------------------------------------------------
-
-   Future<void> salvarPerfil({
+  Future<void> salvarPerfil({
     String? nome,
     String? email,
     required bool pulou,
@@ -317,29 +281,22 @@ class DatabaseHelper {
     );
   }
 
-  /// `null` quando a pessoa ainda não decidiu (nunca viu a tela de
-  /// criar perfil / continuar sem conta).
   Future<Map<String, Object?>?> obterPerfil() async {
     final db = await database;
     final resultados = await db.query('perfil', where: 'id = 1', limit: 1);
     return resultados.isEmpty ? null : resultados.first;
   }
 
-  /// Só troca o tema — ao contrário de [salvarPerfil], não substitui
-  /// a linha inteira (preserva nome/email/criado_em já salvos).
   Future<void> atualizarTema(String tema) async {
     final db = await database;
     await db.update('perfil', {'tema': tema}, where: 'id = 1');
   }
-   /// Remove só o perfil (usado ao sair da conta); mantém projetos e pontos.
+
   Future<void> apagarPerfil() async {
     final db = await database;
     await db.delete('perfil');
   }
 
-  /// Apaga TUDO: projetos, itens, pontos, conquistas e perfil. Usado
-  /// pelo botão "Apagar todos os dados" — depois disso o app volta a
-  /// mostrar a tela de criar perfil, como se fosse a primeira vez.
   Future<void> apagarTudo() async {
     final db = await database;
     await db.delete('itens');
@@ -349,17 +306,11 @@ class DatabaseHelper {
     await db.delete('perfil');
   }
 
-  // ---------------------------------------------------------------
-  // Pontos
-  // ---------------------------------------------------------------
-
   Future<int> registrarPontos(EventoDePontos evento) async {
     final db = await database;
     return db.insert('eventos_pontos', evento.toMap()..remove('id'));
   }
 
-  /// Soma de pontos entre duas datas (inclusivo), usada para "hoje",
-  /// "ontem" e totais de semana/mês no dashboard.
   Future<int> somaPontosEntre(DateTime inicio, DateTime fim) async {
     final db = await database;
     final resultado = await db.rawQuery(
@@ -378,22 +329,21 @@ class DatabaseHelper {
     return (total as int?) ?? 0;
   }
 
-  /// Todo dia (sem hora) em que o usuário ganhou pelo menos 1 ponto,
-  /// do mais recente pro mais antigo. Usado pra calcular a sequência
-  /// de dias seguidos estudando.
   Future<List<DateTime>> diasComPontosDistintos() async {
     final db = await database;
-    final linhas = await db.rawQuery('SELECT DISTINCT data FROM eventos_pontos');
-    final dias = linhas.map((linha) {
-      final data = DateTime.parse(linha['data'] as String);
-      return DateTime(data.year, data.month, data.day);
-    }).toSet().toList();
+    final linhas =
+        await db.rawQuery('SELECT DISTINCT data FROM eventos_pontos');
+    final dias = linhas
+        .map((linha) {
+          final data = DateTime.parse(linha['data'] as String);
+          return DateTime(data.year, data.month, data.day);
+        })
+        .toSet()
+        .toList();
     dias.sort((a, b) => b.compareTo(a));
     return dias;
   }
 
-  /// 7 valores (pontos ganhos naquele dia), de segunda a domingo da
-  /// semana de [segunda].
   Future<List<int>> pontosPorDiaDaSemana(DateTime segunda) async {
     final resultados = <int>[];
     for (var i = 0; i < 7; i++) {
@@ -406,10 +356,6 @@ class DatabaseHelper {
     }
     return resultados;
   }
-
-  // ---------------------------------------------------------------
-  // Conquistas
-  // ---------------------------------------------------------------
 
   Future<void> desbloquearConquista(String conquistaId) async {
     final db = await database;

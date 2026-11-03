@@ -1,13 +1,8 @@
 import 'package:flutter/material.dart';
 
-/// Identidade visual centralizada do App de Estudos.
-///
-/// O tema claro mantém a paleta monocromática anterior.
-/// O tema escuro usa apenas carvão, cinza e azul-acinzentado.
 class AppPalette {
   AppPalette._();
 
-  // Tema claro: monocromático.
   static const Color lightBackground = Color(0xFFD9D9D9);
   static const Color lightSurface = Color(0xFFF0F0F0);
   static const Color lightCard = Color(0xFFEAEAEA);
@@ -16,7 +11,6 @@ class AppPalette {
   static const Color lightBorder = Color.fromARGB(255, 185, 184, 184);
   static const Color graphite = Color.fromARGB(255, 17, 17, 17);
 
-  // Tema escuro: carvão, cinza e azul-acinzentado.
   static const Color darkBackground = Color(0xFF0A0B0D);
   static const Color darkSurface = Color(0xFF1A1E26);
   static const Color darkCard = Color(0xFF1A1E26);
@@ -96,7 +90,8 @@ class AppTheme {
           foregroundColor: AppPalette.lightSurface,
           disabledBackgroundColor: AppPalette.lightBorder,
           disabledForegroundColor: AppPalette.lightMuted,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
         ),
       ),
@@ -104,7 +99,8 @@ class AppTheme {
         style: OutlinedButton.styleFrom(
           foregroundColor: AppPalette.graphite,
           side: const BorderSide(color: AppPalette.lightMuted),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         ),
       ),
@@ -113,7 +109,8 @@ class AppTheme {
         fillColor: AppPalette.lightSurface,
         labelStyle: const TextStyle(color: AppPalette.lightMuted),
         hintStyle: const TextStyle(color: AppPalette.lightMuted),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: AppPalette.lightBorder),
@@ -153,22 +150,16 @@ class AppTheme {
 
   static ThemeData get dark {
     const colors = ColorScheme.dark(
-      // Quase branco: ações principais. Azul-acinzentado fica reservado
-      // para gráficos, progresso e detalhes secundários.
       primary: AppPalette.darkText,
       onPrimary: AppPalette.darkBackground,
       primaryContainer: AppPalette.darkSurface,
       onPrimaryContainer: AppPalette.darkText,
-
-      // Tons mais escuros de azul-acinzentado: gráfico e elementos secundários.
       secondary: AppPalette.slateBlue,
       onSecondary: AppPalette.darkText,
       secondaryContainer: AppPalette.darkSurface,
       onSecondaryContainer: AppPalette.darkText,
       tertiary: AppPalette.paleSlateBlue,
       onTertiary: AppPalette.darkBackground,
-
-      // Mantém até os estados de erro dentro da identidade monocromática.
       error: AppPalette.paleSlateBlue,
       onError: AppPalette.darkBackground,
       surface: AppPalette.darkSurface,
@@ -205,7 +196,6 @@ class AppTheme {
         labelTextStyle: MaterialStateProperty.resolveWith<TextStyle?>((states) {
           final selected = states.contains(MaterialState.selected);
           return TextStyle(
-            // Navegação permanece discreta e monocromática.
             color: selected ? AppPalette.darkText : AppPalette.darkMuted,
             fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
             fontSize: 12,
@@ -224,7 +214,8 @@ class AppTheme {
           foregroundColor: AppPalette.darkBackground,
           disabledBackgroundColor: AppPalette.darkBorder,
           disabledForegroundColor: AppPalette.darkMuted,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
         ),
       ),
@@ -232,7 +223,8 @@ class AppTheme {
         style: OutlinedButton.styleFrom(
           foregroundColor: AppPalette.darkText,
           side: const BorderSide(color: AppPalette.slateBlue),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         ),
       ),
@@ -244,7 +236,8 @@ class AppTheme {
         fillColor: AppPalette.darkCard,
         labelStyle: const TextStyle(color: AppPalette.darkMuted),
         hintStyle: const TextStyle(color: AppPalette.darkMuted),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: AppPalette.darkBorder),
@@ -255,7 +248,8 @@ class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: AppPalette.paleSlateBlue, width: 1.6),
+          borderSide:
+              const BorderSide(color: AppPalette.paleSlateBlue, width: 1.6),
         ),
       ),
       dividerTheme: DividerThemeData(

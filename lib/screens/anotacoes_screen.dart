@@ -9,8 +9,6 @@ import 'anotacao_editor_screen.dart';
 
 enum _FiltroProjeto { todas, semProjeto, projeto }
 
-/// Lista global de todas as anotações do usuário (de qualquer
-/// projeto, ou soltas), com busca por texto e filtro por projeto.
 class AnotacoesScreen extends StatefulWidget {
   final VoidCallback? aoTocarConfiguracoes;
 
@@ -107,8 +105,8 @@ class _AnotacoesScreenState extends State<AnotacoesScreen> {
                   hintText: 'Buscar anotações...',
                   prefixIcon: const Icon(Icons.search),
                   isDense: true,
-                  border:
-                      OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12)),
                   suffixIcon: _busca.isEmpty
                       ? null
                       : IconButton(
@@ -218,12 +216,15 @@ class _AnotacoesScreenState extends State<AnotacoesScreen> {
                                     children: [
                                       CircleAvatar(
                                         radius: 4,
-                                        backgroundColor: Color(projetoDoItem.cor),
+                                        backgroundColor:
+                                            Color(projetoDoItem.cor),
                                       ),
                                       const SizedBox(width: 6),
                                       Text(
                                         projetoDoItem.nome,
-                                        style: Theme.of(context).textTheme.labelSmall,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .labelSmall,
                                       ),
                                     ],
                                   ),

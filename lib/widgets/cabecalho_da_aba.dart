@@ -1,9 +1,5 @@
 import 'package:flutter/material.dart';
 
-/// Cabeçalho padrão das abas principais: título grande + subtítulo
-/// opcional à esquerda, ícone de engrenagem à direita (leva pra aba
-/// Perfil, onde ficam tema e dados). [leading] é opcional — a tela
-/// de Início usa pra colocar o avatar antes do título.
 class CabecalhoDaAba extends StatelessWidget {
   final String titulo;
   final String? subtitulo;

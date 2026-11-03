@@ -1,21 +1,7 @@
-/// Tipo de um [Item]: uma anotação ou uma tarefa.
-///
-/// As duas coisas compartilham a mesma tabela/entidade porque têm os
-/// mesmos campos básicos (título, conteúdo, projeto opcional). O que
-/// muda é como cada tela interpreta e exibe o registro.
 enum TipoItem { anotacao, tarefa }
 
-/// Se uma anotação pode ser vista só pelo dono ou por qualquer pessoa.
-///
-/// Na versão teste isso só existe como campo de dados — não há feed
-/// nem publicação de verdade ainda (isso fica para a fase de
-/// sincronização, quando o app tiver conexão com a internet).
 enum Visibilidade { privada, publica }
 
-/// Uma anotação ou tarefa do usuário.
-///
-/// Pode pertencer a um [Projeto] (via [projetoId]) ou existir solta,
-/// sem projeto nenhum — por isso [projetoId] é opcional.
 class Item {
   final int? id;
   final int? projetoId;
@@ -23,8 +9,6 @@ class Item {
   final String titulo;
   final String conteudo;
 
-  /// Só é relevante quando [tipo] é [TipoItem.tarefa]. Anotações
-  /// ignoram este campo.
   final bool concluido;
 
   final Visibilidade visibilidade;

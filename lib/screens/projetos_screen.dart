@@ -7,9 +7,6 @@ import '../widgets/dialogo_projeto.dart';
 import '../widgets/erro_de_carregamento.dart';
 import 'projeto_detalhe_screen.dart';
 
-/// Lista de projetos (pastas de estudo): cartões com nome, cor e
-/// porcentagem de progresso, com botões de editar e excluir em cada
-/// um, mais um botão para criar projeto.
 class ProjetosScreen extends StatelessWidget {
   final VoidCallback? aoTocarConfiguracoes;
 
@@ -51,11 +48,13 @@ class ProjetosScreen extends StatelessWidget {
                     itemCount: appState.projetos.length,
                     itemBuilder: (context, indice) {
                       final projeto = appState.projetos[indice];
-                      final progresso = appState.progressoPorProjeto[projeto.id] ?? 0;
+                      final progresso =
+                          appState.progressoPorProjeto[projeto.id] ?? 0;
                       return Card(
                         margin: const EdgeInsets.only(bottom: 12),
                         child: ListTile(
-                          leading: CircleAvatar(backgroundColor: Color(projeto.cor)),
+                          leading:
+                              CircleAvatar(backgroundColor: Color(projeto.cor)),
                           title: Text(projeto.nome),
                           subtitle: Padding(
                             padding: const EdgeInsets.only(top: 8, right: 8),
@@ -73,19 +72,22 @@ class ProjetosScreen extends StatelessWidget {
                               Text('$progresso%'),
                               IconButton(
                                 icon: const Icon(Icons.edit_outlined, size: 20),
-                                onPressed: () =>
-                                    abrirDialogoProjeto(context, projetoExistente: projeto),
+                                onPressed: () => abrirDialogoProjeto(context,
+                                    projetoExistente: projeto),
                               ),
                               IconButton(
-                                icon: const Icon(Icons.delete_outline, size: 20),
-                                onPressed: () => confirmarExclusaoProjeto(context, projeto),
+                                icon:
+                                    const Icon(Icons.delete_outline, size: 20),
+                                onPressed: () =>
+                                    confirmarExclusaoProjeto(context, projeto),
                               ),
                             ],
                           ),
                           onTap: () {
                             Navigator.of(context).push(
                               MaterialPageRoute(
-                                builder: (_) => ProjetoDetalheScreen(projetoId: projeto.id!),
+                                builder: (_) => ProjetoDetalheScreen(
+                                    projetoId: projeto.id!),
                               ),
                             );
                           },
