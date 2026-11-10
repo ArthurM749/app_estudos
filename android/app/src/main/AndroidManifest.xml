@@ -1,4 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Sem isto o app de release não acessa a internet (login e feed). -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
         android:label="app_estudos"
         android:name="${applicationName}"

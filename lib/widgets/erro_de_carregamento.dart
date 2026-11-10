@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../data/app_state.dart';
+import '../theme/app_cores.dart';
 
 class ErroDeCarregamento extends StatelessWidget {
   final String mensagem;
@@ -16,7 +17,7 @@ class ErroDeCarregamento extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.error_outline, size: 40, color: Colors.redAccent),
+            Icon(Icons.error_outline, size: 40, color: context.coresApp.perigo),
             const SizedBox(height: 12),
             const Text('Não deu pra carregar os dados.'),
             const SizedBox(height: 8),

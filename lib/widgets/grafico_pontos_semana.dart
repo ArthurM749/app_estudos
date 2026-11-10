@@ -1,6 +1,8 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
+import '../theme/app_cores.dart';
+
 const _diasDaSemana = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
 
 class GraficoPontosSemana extends StatefulWidget {
@@ -41,7 +43,7 @@ class _GraficoPontosSemanaState extends State<GraficoPontosSemana> {
 
   @override
   Widget build(BuildContext context) {
-    final cores = Theme.of(context).colorScheme;
+    final cores = context.coresApp;
     final totalSemana = widget.pontosPorDia.fold<int>(0, (soma, v) => soma + v);
     final maiorValor =
         widget.pontosPorDia.fold<int>(0, (maior, v) => v > maior ? v : maior);
@@ -69,7 +71,7 @@ class _GraficoPontosSemanaState extends State<GraficoPontosSemana> {
             Text(
               '$totalSemana pts na semana',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: cores.onSurfaceVariant,
+                    color: cores.graficoRotulo,
                   ),
             ),
           ],
@@ -85,11 +87,12 @@ class _GraficoPontosSemanaState extends State<GraficoPontosSemana> {
               borderData: FlBorderData(show: false),
               barTouchData: BarTouchData(
                 touchTooltipData: BarTouchTooltipData(
+                  getTooltipColor: (_) => cores.graficoTooltipFundo,
                   getTooltipItem: (group, groupIndex, rod, rodIndex) {
                     return BarTooltipItem(
                       '${rod.toY.round()} pts',
                       TextStyle(
-                        color: cores.onInverseSurface,
+                        color: cores.graficoTooltipTexto,
                         fontWeight: FontWeight.bold,
                       ),
                     );
@@ -116,7 +119,7 @@ class _GraficoPontosSemanaState extends State<GraficoPontosSemana> {
                       return Text(
                         valor.round().toString(),
                         style: TextStyle(
-                            color: cores.onSurfaceVariant, fontSize: 11),
+                            color: cores.graficoRotulo, fontSize: 11),
                       );
                     },
                   ),
@@ -138,7 +141,9 @@ class _GraficoPontosSemanaState extends State<GraficoPontosSemana> {
                             fontWeight: selecionado
                                 ? FontWeight.bold
                                 : FontWeight.normal,
-                            color: selecionado ? cores.tertiary : null,
+                            color: selecionado
+                                ? cores.graficoRotuloSelecionado
+                                : cores.graficoRotulo,
                           ),
                         ),
                       );
@@ -157,8 +162,8 @@ class _GraficoPontosSemanaState extends State<GraficoPontosSemana> {
                       width: 20,
                       borderRadius: BorderRadius.circular(4),
                       color: selecionado
-                          ? cores.tertiary
-                          : cores.secondary.withOpacity(0.95),
+                          ? cores.graficoBarraSelecionada
+                          : cores.graficoBarra,
                     ),
                   ],
                 );

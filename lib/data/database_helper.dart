@@ -36,7 +36,7 @@ class DatabaseHelper {
     final path = join(await getDatabasesPath(), 'app_estudos.db');
     return openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
       onConfigure: (db) async {
@@ -51,7 +51,17 @@ class DatabaseHelper {
           "ALTER TABLE perfil ADD COLUMN tema TEXT NOT NULL DEFAULT 'claro'");
       await db.execute('ALTER TABLE perfil ADD COLUMN criado_em TEXT');
     }
+    if (oldVersion < 3) {
+      // Pontos idempotentes: eventos antigos ficam com referência nula (o índice
+      // parcial ignora nulos) e só os novos passam a ser deduplicados.
+      await db.execute('ALTER TABLE eventos_pontos ADD COLUMN referencia TEXT');
+      await db.execute(_sqlIndicePontosUnicos);
+    }
   }
+
+  static const _sqlIndicePontosUnicos =
+      'CREATE UNIQUE INDEX idx_pontos_referencia ON eventos_pontos (tipo, referencia) '
+      'WHERE referencia IS NOT NULL';
 
   Future<void> _onCreate(Database db, int version) async {
     await db.execute('''
@@ -85,9 +95,11 @@ class DatabaseHelper {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         tipo TEXT NOT NULL,
         pontos INTEGER NOT NULL,
-        data TEXT NOT NULL
+        data TEXT NOT NULL,
+        referencia TEXT
       )
     ''');
+    await db.execute(_sqlIndicePontosUnicos);
 
     await db.execute('''
       CREATE TABLE conquistas_desbloqueadas (
@@ -275,7 +287,10 @@ class DatabaseHelper {
         'email': email,
         'pulou': pulou ? 1 : 0,
         'tema': existente?['tema'] ?? 'claro',
-        'criado_em': DateTime.now().toIso8601String(),
+        // Preserva a data original: regravar o perfil não é "começar a
+        // estudar" de novo.
+        'criado_em':
+            existente?['criado_em'] ?? DateTime.now().toIso8601String(),
       },
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
@@ -290,6 +305,12 @@ class DatabaseHelper {
   Future<void> atualizarTema(String tema) async {
     final db = await database;
     await db.update('perfil', {'tema': tema}, where: 'id = 1');
+  }
+
+  /// Mantém o nome local igual ao do perfil público (uma identidade só).
+  Future<void> atualizarNome(String nome) async {
+    final db = await database;
+    await db.update('perfil', {'nome': nome}, where: 'id = 1');
   }
 
   Future<void> apagarPerfil() async {
@@ -308,7 +329,12 @@ class DatabaseHelper {
 
   Future<int> registrarPontos(EventoDePontos evento) async {
     final db = await database;
-    return db.insert('eventos_pontos', evento.toMap()..remove('id'));
+    // ignore: se a referência já gerou pontos desse tipo, não duplica.
+    return db.insert(
+      'eventos_pontos',
+      evento.toMap()..remove('id'),
+      conflictAlgorithm: ConflictAlgorithm.ignore,
+    );
   }
 
   Future<int> somaPontosEntre(DateTime inicio, DateTime fim) async {

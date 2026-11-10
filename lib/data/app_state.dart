@@ -80,6 +80,15 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Chamado quando o nome é editado no perfil público, para o app todo
+  /// (saudação do Início, modo offline) usar o mesmo nome.
+  Future<void> atualizarNome(String nome) async {
+    if (nome == nomeUsuario) return;
+    await _db.atualizarNome(nome);
+    nomeUsuario = nome;
+    notifyListeners();
+  }
+
   Future<void> continuarSemConta() async {
     await _db.salvarPerfil(pulou: true);
     await _db.atualizarTema(_temaParaTexto(tema));
@@ -232,10 +241,15 @@ class AppState extends ChangeNotifier {
     if (tarefasConcluidas >= 1) await _desbloquear('maos_a_obra');
   }
 
-  Future<void> _registrarPontos(TipoAcao tipo) async {
+  Future<void> _registrarPontos(TipoAcao tipo, {String? referencia}) async {
     final pontos = RegrasDePontos.pontosPorAcao[tipo] ?? 0;
     await _db.registrarPontos(
-      EventoDePontos(tipo: tipo, pontos: pontos, data: DateTime.now()),
+      EventoDePontos(
+        tipo: tipo,
+        pontos: pontos,
+        data: DateTime.now(),
+        referencia: referencia,
+      ),
     );
   }
 
@@ -317,7 +331,8 @@ class AppState extends ChangeNotifier {
     progressoPorProjeto[projeto.id!] = progresso;
 
     if (progresso >= 100 && anterior < 100) {
-      await _registrarPontos(TipoAcao.concluirProjeto);
+      await _registrarPontos(TipoAcao.concluirProjeto,
+          referencia: 'projeto:${projeto.id}');
       await _desbloquear('dedicado');
     }
     await _recarregarPontosEConquistas();
@@ -373,7 +388,9 @@ class AppState extends ChangeNotifier {
     await _db.atualizarItem(atualizado);
 
     if (atualizado.concluido) {
-      await _registrarPontos(TipoAcao.concluirTarefa);
+      // Referência = id do item: desmarcar e marcar de novo não dá pontos.
+      await _registrarPontos(TipoAcao.concluirTarefa,
+          referencia: 'item:${item.id}');
     }
 
     await _recarregarPontosEConquistas();

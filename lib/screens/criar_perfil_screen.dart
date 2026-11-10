@@ -2,11 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../data/app_state.dart';
-
-import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-
-import '../data/app_state.dart';
 import '../data/auth_service.dart';
 
 class CriarPerfilScreen extends StatefulWidget {
@@ -119,9 +114,10 @@ class _CriarPerfilScreenState extends State<CriarPerfilScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Com uma conta você poderá publicar o que quiser mais '
-                      'pra frente. Ou continue sem conta — seus estudos '
-                      'ficam salvos no aparelho de qualquer jeito.',
+                      'Com uma conta você tem perfil público, feed e pode seguir '
+                      'colegas. Seus estudos ficam salvos no aparelho; só vai '
+                      'para a internet o que você escolher publicar. Ou '
+                      'continue sem conta.',
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.bodySmall,
                     ),

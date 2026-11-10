@@ -1,277 +1,248 @@
 import 'package:flutter/material.dart';
 
-class AppPalette {
-  AppPalette._();
+import 'app_cores.dart';
 
-  static const Color lightBackground = Color(0xFFD9D9D9);
-  static const Color lightSurface = Color(0xFFF0F0F0);
-  static const Color lightCard = Color(0xFFEAEAEA);
-  static const Color lightText = Color(0xFF0D0D0D);
-  static const Color lightMuted = Color(0xFF737373);
-  static const Color lightBorder = Color.fromARGB(255, 185, 184, 184);
-  static const Color graphite = Color.fromARGB(255, 17, 17, 17);
+// Reexporta para que quem já importava `AppPalette` daqui continue funcionando.
+export 'app_palette.dart';
 
-  static const Color darkBackground = Color(0xFF0A0B0D);
-  static const Color darkSurface = Color(0xFF1A1E26);
-  static const Color darkCard = Color(0xFF1A1E26);
-  static const Color slateBlue = Color(0xFF536173);
-  static const Color paleSlateBlue = Color(0xFF8593A6);
-  static const Color darkText = Color(0xFFE2E6EC);
-  static const Color darkMuted = Color(0xFF8593A6);
-  static const Color darkBorder = Color(0xFF536173);
-}
-
+/// Monta o [ThemeData] a partir dos tokens de [AppCores]. Este arquivo não tem
+/// nenhuma cor escrita à mão: para mudar o visual, mexa em `app_cores.dart`.
 class AppTheme {
   AppTheme._();
 
-  static ThemeData get light {
-    const colors = ColorScheme.light(
-      primary: AppPalette.graphite,
-      onPrimary: AppPalette.lightSurface,
-      primaryContainer: AppPalette.lightBorder,
-      onPrimaryContainer: AppPalette.lightText,
-      secondary: AppPalette.lightMuted,
-      onSecondary: AppPalette.lightSurface,
-      secondaryContainer: AppPalette.lightBackground,
-      onSecondaryContainer: AppPalette.lightText,
-      tertiary: AppPalette.graphite,
-      onTertiary: AppPalette.lightSurface,
-      error: AppPalette.graphite,
-      onError: AppPalette.lightSurface,
-      surface: AppPalette.lightSurface,
-      onSurface: AppPalette.lightText,
-      onSurfaceVariant: AppPalette.graphite,
-      outline: AppPalette.lightMuted,
-      outlineVariant: AppPalette.lightBorder,
-      inverseSurface: AppPalette.graphite,
-      onInverseSurface: AppPalette.lightSurface,
-      inversePrimary: AppPalette.lightBackground,
-      surfaceTint: AppPalette.graphite,
+  static ThemeData get light => _construir(AppCores.claro, Brightness.light);
+  static ThemeData get dark => _construir(AppCores.escuro, Brightness.dark);
+
+  static ThemeData _construir(AppCores c, Brightness brilho) {
+    // Todos os papéis do ColorScheme são preenchidos de propósito. Quando um
+    // papel fica de fora, o Material 3 completa com o roxo/rosa padrão dele —
+    // foi assim que o botão "Apagar todos os dados" ficou rosado sem ninguém
+    // ter escolhido essa cor.
+    final esquema = ColorScheme(
+      brightness: brilho,
+      primary: c.botaoPrimarioFundo,
+      onPrimary: c.botaoPrimarioTexto,
+      primaryContainer: c.fabFundo,
+      onPrimaryContainer: c.fabIcone,
+      secondary: c.textoSuave,
+      onSecondary: c.botaoPrimarioTexto,
+      secondaryContainer: c.emblemaFundo,
+      onSecondaryContainer: c.emblemaTexto,
+      tertiary: c.iconeDestaque,
+      onTertiary: c.botaoPrimarioTexto,
+      tertiaryContainer: c.emblemaFundo,
+      onTertiaryContainer: c.emblemaTexto,
+      error: c.perigo,
+      onError: c.perigoSobre,
+      errorContainer: c.botaoPerigoSuaveFundo,
+      onErrorContainer: c.botaoPerigoSuaveTexto,
+      surface: c.superficie,
+      onSurface: c.textoPrincipal,
+      onSurfaceVariant: c.textoSecundario,
+      surfaceDim: c.fundoApp,
+      surfaceBright: c.superficie,
+      // O Card do Material 3 usa surfaceContainerLow e o AlertDialog usa
+      // surfaceContainerHigh como cor de fundo.
+      surfaceContainerLowest: c.fundoApp,
+      surfaceContainerLow: c.cartao,
+      surfaceContainer: c.superficie,
+      surfaceContainerHigh: c.dialogoFundo,
+      surfaceContainerHighest: c.campoFundo,
+      outline: c.bordaForte,
+      outlineVariant: c.cartaoBorda,
+      shadow: Colors.black,
+      scrim: Colors.black,
+      inverseSurface: c.snackbarFundo,
+      onInverseSurface: c.snackbarTexto,
+      inversePrimary: c.iconeDestaque,
+      // Sem "tint": o Material 3 pintaria cartões elevados com essa cor.
+      surfaceTint: Colors.transparent,
     );
+
+    final raio14 = BorderRadius.circular(14);
 
     return ThemeData(
       useMaterial3: true,
-      brightness: Brightness.light,
-      colorScheme: colors,
-      scaffoldBackgroundColor: AppPalette.lightBackground,
-      canvasColor: AppPalette.lightBackground,
-      cardColor: AppPalette.lightCard,
-      dividerColor: AppPalette.lightBorder.withOpacity(0.65),
-      shadowColor: const Color(0x22000000),
-      appBarTheme: const AppBarTheme(
-        backgroundColor: AppPalette.lightBackground,
-        foregroundColor: AppPalette.lightText,
+      brightness: brilho,
+      colorScheme: esquema,
+      scaffoldBackgroundColor: c.fundoApp,
+      canvasColor: c.fundoApp,
+      cardColor: c.cartao,
+      shadowColor: Colors.black,
+      iconTheme: IconThemeData(color: c.iconePadrao),
+      appBarTheme: AppBarTheme(
+        backgroundColor: c.appBarFundo,
+        foregroundColor: c.appBarTexto,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: false,
       ),
       navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: AppPalette.lightSurface,
-        indicatorColor: AppPalette.lightBackground,
+        backgroundColor: c.navegacaoFundo,
+        indicatorColor: c.navegacaoIndicador,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
-        labelTextStyle: MaterialStateProperty.resolveWith<TextStyle?>((states) {
-          final selected = states.contains(MaterialState.selected);
+        labelTextStyle: WidgetStateProperty.resolveWith<TextStyle?>((estados) {
+          final selecionada = estados.contains(WidgetState.selected);
           return TextStyle(
-            color: selected ? AppPalette.graphite : AppPalette.lightMuted,
-            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+            color: selecionada ? c.navegacaoItemAtivo : c.navegacaoItemInativo,
+            fontWeight: selecionada ? FontWeight.w700 : FontWeight.w500,
             fontSize: 12,
           );
         }),
-        iconTheme: MaterialStateProperty.resolveWith<IconThemeData?>((states) {
-          final selected = states.contains(MaterialState.selected);
+        iconTheme: WidgetStateProperty.resolveWith<IconThemeData?>((estados) {
+          final selecionada = estados.contains(WidgetState.selected);
           return IconThemeData(
-            color: selected ? AppPalette.graphite : AppPalette.lightMuted,
+            color: selecionada ? c.navegacaoItemAtivo : c.navegacaoItemInativo,
           );
         }),
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          backgroundColor: AppPalette.graphite,
-          foregroundColor: AppPalette.lightSurface,
-          disabledBackgroundColor: AppPalette.lightBorder,
-          disabledForegroundColor: AppPalette.lightMuted,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          backgroundColor: c.botaoPrimarioFundo,
+          foregroundColor: c.botaoPrimarioTexto,
+          disabledBackgroundColor: c.botaoDesabilitadoFundo,
+          disabledForegroundColor: c.botaoDesabilitadoTexto,
+          shape: RoundedRectangleBorder(borderRadius: raio14),
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: AppPalette.graphite,
-          side: const BorderSide(color: AppPalette.lightMuted),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        ),
-      ),
-      inputDecorationTheme: InputDecorationTheme(
-        filled: true,
-        fillColor: AppPalette.lightSurface,
-        labelStyle: const TextStyle(color: AppPalette.lightMuted),
-        hintStyle: const TextStyle(color: AppPalette.lightMuted),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: AppPalette.lightBorder),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: AppPalette.lightBorder),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: AppPalette.graphite, width: 1.6),
-        ),
-      ),
-      dividerTheme: const DividerThemeData(
-        color: AppPalette.lightBorder,
-        thickness: 0.7,
-        space: 1,
-      ),
-      progressIndicatorTheme: const ProgressIndicatorThemeData(
-        color: AppPalette.graphite,
-        linearTrackColor: AppPalette.lightBorder,
-        circularTrackColor: AppPalette.lightBorder,
-      ),
-      sliderTheme: const SliderThemeData(
-        activeTrackColor: AppPalette.graphite,
-        inactiveTrackColor: AppPalette.lightBorder,
-        thumbColor: AppPalette.graphite,
-        overlayColor: Color(0x1F404040),
-      ),
-      textSelectionTheme: const TextSelectionThemeData(
-        cursorColor: AppPalette.graphite,
-        selectionColor: Color(0x55404040),
-        selectionHandleColor: AppPalette.graphite,
-      ),
-    );
-  }
-
-  static ThemeData get dark {
-    const colors = ColorScheme.dark(
-      primary: AppPalette.darkText,
-      onPrimary: AppPalette.darkBackground,
-      primaryContainer: AppPalette.darkSurface,
-      onPrimaryContainer: AppPalette.darkText,
-      secondary: AppPalette.slateBlue,
-      onSecondary: AppPalette.darkText,
-      secondaryContainer: AppPalette.darkSurface,
-      onSecondaryContainer: AppPalette.darkText,
-      tertiary: AppPalette.paleSlateBlue,
-      onTertiary: AppPalette.darkBackground,
-      error: AppPalette.paleSlateBlue,
-      onError: AppPalette.darkBackground,
-      surface: AppPalette.darkSurface,
-      onSurface: AppPalette.darkText,
-      onSurfaceVariant: AppPalette.darkMuted,
-      outline: AppPalette.slateBlue,
-      outlineVariant: AppPalette.slateBlue,
-      inverseSurface: AppPalette.darkText,
-      onInverseSurface: AppPalette.darkBackground,
-      inversePrimary: AppPalette.paleSlateBlue,
-      surfaceTint: AppPalette.darkSurface,
-    );
-
-    return ThemeData(
-      useMaterial3: true,
-      brightness: Brightness.dark,
-      colorScheme: colors,
-      scaffoldBackgroundColor: AppPalette.darkBackground,
-      canvasColor: AppPalette.darkBackground,
-      cardColor: AppPalette.darkCard,
-      dividerColor: AppPalette.darkBorder.withOpacity(0.35),
-      shadowColor: const Color(0x99000000),
-      appBarTheme: const AppBarTheme(
-        backgroundColor: AppPalette.darkBackground,
-        foregroundColor: AppPalette.darkText,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        centerTitle: false,
-      ),
-      navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: AppPalette.darkBackground,
-        indicatorColor: AppPalette.darkSurface,
-        elevation: 0,
-        labelTextStyle: MaterialStateProperty.resolveWith<TextStyle?>((states) {
-          final selected = states.contains(MaterialState.selected);
-          return TextStyle(
-            color: selected ? AppPalette.darkText : AppPalette.darkMuted,
-            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-            fontSize: 12,
-          );
-        }),
-        iconTheme: MaterialStateProperty.resolveWith<IconThemeData?>((states) {
-          final selected = states.contains(MaterialState.selected);
-          return IconThemeData(
-            color: selected ? AppPalette.darkText : AppPalette.darkMuted,
-          );
-        }),
-      ),
-      filledButtonTheme: FilledButtonThemeData(
-        style: FilledButton.styleFrom(
-          backgroundColor: AppPalette.darkText,
-          foregroundColor: AppPalette.darkBackground,
-          disabledBackgroundColor: AppPalette.darkBorder,
-          disabledForegroundColor: AppPalette.darkMuted,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
-        ),
-      ),
-      outlinedButtonTheme: OutlinedButtonThemeData(
-        style: OutlinedButton.styleFrom(
-          foregroundColor: AppPalette.darkText,
-          side: const BorderSide(color: AppPalette.slateBlue),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          foregroundColor: c.botaoSecundarioTexto,
+          side: BorderSide(color: c.botaoSecundarioBorda),
+          shape: RoundedRectangleBorder(borderRadius: raio14),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(foregroundColor: AppPalette.darkMuted),
+        style: TextButton.styleFrom(foregroundColor: c.botaoTextoCor),
+      ),
+      iconButtonTheme: IconButtonThemeData(
+        style: IconButton.styleFrom(foregroundColor: c.iconePadrao),
+      ),
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: c.fabFundo,
+        foregroundColor: c.fabIcone,
+        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: AppPalette.darkCard,
-        labelStyle: const TextStyle(color: AppPalette.darkMuted),
-        hintStyle: const TextStyle(color: AppPalette.darkMuted),
+        fillColor: c.campoFundo,
+        labelStyle: TextStyle(color: c.campoRotulo),
+        hintStyle: TextStyle(color: c.campoRotulo),
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: AppPalette.darkBorder),
+          borderRadius: raio14,
+          borderSide: BorderSide(color: c.campoBorda),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: AppPalette.darkBorder),
+          borderRadius: raio14,
+          borderSide: BorderSide(color: c.campoBorda),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide:
-              const BorderSide(color: AppPalette.paleSlateBlue, width: 1.6),
+          borderRadius: raio14,
+          borderSide: BorderSide(color: c.campoBordaFoco, width: 1.6),
         ),
       ),
-      dividerTheme: DividerThemeData(
-        color: AppPalette.darkBorder.withOpacity(0.35),
-        thickness: 0.7,
-        space: 1,
+      dividerTheme: DividerThemeData(color: c.divisor, thickness: 0.7, space: 1),
+      progressIndicatorTheme: ProgressIndicatorThemeData(
+        color: c.progressoAtivo,
+        linearTrackColor: c.progressoTrilho,
+        circularTrackColor: c.progressoTrilho,
       ),
-      progressIndicatorTheme: const ProgressIndicatorThemeData(
-        color: AppPalette.paleSlateBlue,
-        linearTrackColor: AppPalette.slateBlue,
-        circularTrackColor: AppPalette.slateBlue,
+      sliderTheme: SliderThemeData(
+        activeTrackColor: c.sliderAtivo,
+        inactiveTrackColor: c.sliderTrilho,
+        thumbColor: c.sliderBolinha,
+        overlayColor: c.sliderOverlay,
       ),
-      sliderTheme: const SliderThemeData(
-        activeTrackColor: AppPalette.paleSlateBlue,
-        inactiveTrackColor: AppPalette.slateBlue,
-        thumbColor: AppPalette.paleSlateBlue,
-        overlayColor: Color(0x338593A6),
+      textSelectionTheme: TextSelectionThemeData(
+        cursorColor: c.cursor,
+        selectionColor: c.selecaoTexto,
+        selectionHandleColor: c.cursor,
       ),
-      textSelectionTheme: const TextSelectionThemeData(
-        cursorColor: AppPalette.paleSlateBlue,
-        selectionColor: Color(0x558593A6),
-        selectionHandleColor: AppPalette.paleSlateBlue,
+      cardTheme: CardThemeData(
+        color: c.cartao,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: raio14,
+          side: BorderSide(color: c.cartaoBorda, width: 0.8),
+        ),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: c.dialogoFundo,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      ),
+      snackBarTheme: SnackBarThemeData(
+        backgroundColor: c.snackbarFundo,
+        contentTextStyle: TextStyle(color: c.snackbarTexto),
+        actionTextColor: c.snackbarTexto,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+      chipTheme: ChipThemeData(
+        backgroundColor: c.chipFundo,
+        selectedColor: c.chipFundoSelecionado,
+        checkmarkColor: c.chipTextoSelecionado,
+        side: BorderSide(color: c.chipBorda),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        labelStyle: WidgetStateTextStyle.resolveWith((estados) {
+          final selecionado = estados.contains(WidgetState.selected);
+          return TextStyle(
+            color: selecionado ? c.chipTextoSelecionado : c.chipTexto,
+            fontWeight: selecionado ? FontWeight.w600 : FontWeight.w500,
+          );
+        }),
+      ),
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith<Color?>((estados) {
+          return estados.contains(WidgetState.selected)
+              ? c.controleAtivoSobre
+              : c.controleInativoBolinha;
+        }),
+        trackColor: WidgetStateProperty.resolveWith<Color?>((estados) {
+          return estados.contains(WidgetState.selected)
+              ? c.controleAtivo
+              : c.controleInativoTrilho;
+        }),
+        trackOutlineColor: WidgetStateProperty.resolveWith<Color?>((estados) {
+          return estados.contains(WidgetState.selected)
+              ? Colors.transparent
+              : c.controleInativoBorda;
+        }),
+      ),
+      radioTheme: RadioThemeData(
+        fillColor: WidgetStateProperty.resolveWith<Color?>((estados) {
+          return estados.contains(WidgetState.selected)
+              ? c.controleAtivo
+              : c.controleInativoBorda;
+        }),
+      ),
+      checkboxTheme: CheckboxThemeData(
+        fillColor: WidgetStateProperty.resolveWith<Color?>((estados) {
+          return estados.contains(WidgetState.selected)
+              ? c.controleAtivo
+              : Colors.transparent;
+        }),
+        checkColor: WidgetStatePropertyAll(c.controleAtivoSobre),
+        side: BorderSide(color: c.controleInativoBorda, width: 1.5),
+      ),
+      listTileTheme: ListTileThemeData(
+        iconColor: c.iconePadrao,
+        textColor: c.textoPrincipal,
+      ),
+      tooltipTheme: TooltipThemeData(
+        decoration: BoxDecoration(
+          color: c.tooltipFundo,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        textStyle: TextStyle(color: c.tooltipTexto, fontSize: 12),
       ),
     );
   }

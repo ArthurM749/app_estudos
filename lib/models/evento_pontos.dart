@@ -11,11 +11,17 @@ class EventoDePontos {
   final int pontos;
   final DateTime data;
 
+  /// Identifica "o que gerou" os pontos (ex.: `item:12`, `projeto:3`). O banco
+  /// não aceita dois eventos do mesmo tipo com a mesma referência, então
+  /// marcar e desmarcar a mesma tarefa não rende pontos de novo.
+  final String? referencia;
+
   const EventoDePontos({
     this.id,
     required this.tipo,
     required this.pontos,
     required this.data,
+    this.referencia,
   });
 
   Map<String, Object?> toMap() {
@@ -24,6 +30,7 @@ class EventoDePontos {
       'tipo': tipo.name,
       'pontos': pontos,
       'data': data.toIso8601String(),
+      'referencia': referencia,
     };
   }
 
@@ -33,6 +40,7 @@ class EventoDePontos {
       tipo: TipoAcao.values.byName(map['tipo'] as String),
       pontos: map['pontos'] as int,
       data: DateTime.parse(map['data'] as String),
+      referencia: map['referencia'] as String?,
     );
   }
 }
