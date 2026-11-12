@@ -9,7 +9,15 @@ class AuthService {
 
   SupabaseClient get _client => Supabase.instance.client;
 
-  User? get usuarioAtual => _client.auth.currentUser;
+  /// Conta logada, ou null (sem conta, ou Supabase indisponível — o app abre
+  /// mesmo se o Supabase não conseguiu iniciar).
+  User? get usuarioAtual {
+    try {
+      return _client.auth.currentUser;
+    } catch (_) {
+      return null;
+    }
+  }
 
   Future<AuthResponse> entrar({
     required String email,

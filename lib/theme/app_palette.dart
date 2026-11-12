@@ -1,26 +1,38 @@
 import 'package:flutter/material.dart';
 
-/// Cores cruas do app — o "estoque de tintas". Aqui só ficam os valores; quem
-/// decide qual cor vai em qual componente (botão, gráfico, ícone...) é o
-/// `app_cores.dart`. Para trocar a identidade visual inteira, mude estes valores;
-/// para trocar só um componente, mude o token dele em `app_cores.dart`.
+/// Cores cruas do app — o "estoque de tintas".
 class AppPalette {
   AppPalette._();
 
-  static const Color lightBackground = Color(0xFFD9D9D9);
-  static const Color lightSurface = Color(0xFFF0F0F0);
-  static const Color lightCard = Color(0xFFEAEAEA);
-  static const Color lightText = Color(0xFF0D0D0D);
-  static const Color lightMuted = Color(0xFF737373);
-  static const Color lightBorder = Color.fromARGB(255, 185, 184, 184);
-  static const Color graphite = Color.fromARGB(255, 17, 17, 17);
+  // --- TEMA CLARO (Base: #365673, #4D7A8C, #F0E8DF, #D95A2B) ---
+  static const Color lightBackground = Color(0xFFF0E8DF); // Fundo principal da paleta
+  static const Color lightSurface = Color(0xFFFDFBF7);    // Superfícies claras para destacar do fundo
+  static const Color lightCard = Color(0xFFF8F4EC);       // Cartões
+  static const Color lightText = Color(0xFF1A2126);       // Letra bem escura para contraste excelente
+  static const Color lightMuted = Color(0xFF6B7C87);      // Texto secundário (acinzentado azulado)
+  static const Color lightBorder = Color(0xFFD9D0C7);     // Bordas suaves
+  static const Color graphite = Color(0xFF365673);        // Azul ardósia escuro (Botões, FAB, destaque forte)
 
-  static const Color darkBackground = Color(0xFF0A0B0D);
-  static const Color darkSurface = Color(0xFF1A1E26);
-  static const Color darkCard = Color(0xFF1A1E26);
-  static const Color slateBlue = Color(0xFF536173);
-  static const Color paleSlateBlue = Color(0xFF8593A6);
-  static const Color darkText = Color(0xFFE2E6EC);
-  static const Color darkMuted = Color(0xFF8593A6);
-  static const Color darkBorder = Color(0xFF536173);
+  // --- TEMA ESCURO (Base: #BF0413, #73030D, #204370, #A4B0A2, #0D0D0D, #BF2C2C) ---
+  static const Color darkBackground = Color(0xFF0D0D0D);  // Fundo preto puro da paleta
+  static const Color darkSurface = Color(0xFF171717);     // Superfícies para destacar do fundo preto
+  static const Color darkCard = Color(0xFF1E1E1E);        // Cartões
+  static const Color slateBlue = Color(0xFF204370);       // Azul escuro (Botões no tema escuro)
+  static const Color paleSlateBlue = Color(0xFF4D7A8C);   // Azul médio/claro para contraste e ícones
+  static const Color darkText = Color(0xFFF2F2F2);        // Letra branca/gelo para destacar no preto
+  static const Color darkMuted = Color(0xFFA4B0A2);       // Sage green (fornecido) ótimo e confortável para texto secundário
+  static const Color darkBorder = Color(0xFF2C2C2C);      // Bordas escuras
+
+  // ===========================================================================
+  // CORES VARIADAS PARA PROJETOS E AVATARES (Substituindo os cinzas chatos)
+  // Use essas variáveis quando o usuário for escolher a cor de um novo projeto!
+  // ===========================================================================
+  static const Color projectRed = Color(0xFFBF2C2C);
+  static const Color projectOrange = Color(0xFFD95A2B);
+  static const Color projectYellow = Color(0xFFE5A91A);
+  static const Color projectGreen = Color(0xFF429867);
+  static const Color projectTeal = Color(0xFF328C8C);
+  static const Color projectBlue = Color(0xFF4D7A8C);
+  static const Color projectPurple = Color(0xFF7B52AB);
+  static const Color projectPink = Color(0xFFD94876);
 }

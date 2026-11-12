@@ -156,6 +156,7 @@ class _ListaPessoasScreenState extends State<ListaPessoasScreen> {
                                 leading: AvatarUsuario(
                                   nome: pessoa.nome,
                                   cor: pessoa.avatarCor,
+                                  imagemUrl: pessoa.avatarUrl,
                                 ),
                                 title: Text(pessoa.nome),
                                 subtitle: pessoa.usuario != null

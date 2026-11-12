@@ -1,4 +1,8 @@
+import 'dart:async';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../data/app_state.dart';
@@ -8,10 +12,13 @@ import '../models/conquista.dart';
 import '../models/perfil_social.dart';
 import '../theme/app_cores.dart';
 import '../utils/mensagens.dart';
-import '../widgets/dialogo_projeto.dart' show coresDeProjeto;
+import '../widgets/avatar_usuario.dart';
+import '../widgets/seletor_de_cor.dart';
 import '../widgets/titulo_secao.dart';
 
 final _padraoUsuario = RegExp(r'^[a-z0-9_]{3,20}$');
+
+enum _EstadoUsuario { neutro, verificando, livre, ocupado }
 
 /// Edição do meu perfil público: nome, @usuário, bio, cor do avatar e, o mais
 /// importante, o que fica visível para os outros. Tudo começa privado.
@@ -36,6 +43,18 @@ class _EditarPerfilPublicoScreenState extends State<EditarPerfilPublicoScreen> {
   String? _erro;
 
   int? _avatarCor;
+  String? _avatarUrl;
+
+  // Foto escolhida agora (só é enviada ao tocar em Salvar) ou pedido de remoção.
+  Uint8List? _novaFoto;
+  String _extensaoFoto = 'jpg';
+  bool _removerFoto = false;
+
+  // @usuário: o app confere se está livre enquanto a pessoa digita.
+  String? _usuarioOriginal;
+  Timer? _esperaUsuario;
+  _EstadoUsuario _estadoUsuario = _EstadoUsuario.neutro;
+
   bool _mostrarPontos = false;
   bool _mostrarSequencia = false;
   bool _mostrarEstatisticas = false;
@@ -52,6 +71,7 @@ class _EditarPerfilPublicoScreenState extends State<EditarPerfilPublicoScreen> {
 
   @override
   void dispose() {
+    _esperaUsuario?.cancel();
     _nomeController.dispose();
     _usuarioController.dispose();
     _bioController.dispose();
@@ -82,8 +102,10 @@ class _EditarPerfilPublicoScreenState extends State<EditarPerfilPublicoScreen> {
       setState(() {
         _nomeController.text = perfil.nome;
         _usuarioController.text = perfil.usuario ?? '';
+        _usuarioOriginal = perfil.usuario;
         _bioController.text = perfil.bio;
         _avatarCor = perfil.avatarCor;
+        _avatarUrl = perfil.avatarUrl;
         _mostrarPontos = perfil.mostrarPontos;
         _mostrarSequencia = perfil.mostrarSequencia;
         _mostrarEstatisticas = perfil.mostrarEstatisticas;
@@ -102,12 +124,50 @@ class _EditarPerfilPublicoScreenState extends State<EditarPerfilPublicoScreen> {
     }
   }
 
+  /// Confere (com uma pequena espera após parar de digitar) se o @ está livre.
+  void _aoMudarUsuario(String texto) {
+    _esperaUsuario?.cancel();
+    final usuario = texto.trim().toLowerCase();
+    if (usuario == _usuarioOriginal ||
+        !_padraoUsuario.hasMatch(usuario)) {
+      setState(() => _estadoUsuario = _EstadoUsuario.neutro);
+      return;
+    }
+    setState(() => _estadoUsuario = _EstadoUsuario.verificando);
+    _esperaUsuario = Timer(const Duration(milliseconds: 500), () async {
+      try {
+        final livre = await SocialService.instance.usuarioDisponivel(usuario);
+        if (!mounted || _usuarioController.text.trim().toLowerCase() != usuario) {
+          return;
+        }
+        setState(() => _estadoUsuario =
+            livre ? _EstadoUsuario.livre : _EstadoUsuario.ocupado);
+      } catch (_) {
+        // Sem internet: não bloqueia; o banco confere de novo ao salvar.
+        if (mounted) setState(() => _estadoUsuario = _EstadoUsuario.neutro);
+      }
+    });
+  }
+
   Future<void> _salvar() async {
     if (_formKey.currentState?.validate() != true || _salvando) return;
     final app = context.read<AppState>();
     final social = context.read<SocialState>();
 
     final usuario = _usuarioController.text.trim().toLowerCase();
+    if (usuario != _usuarioOriginal) {
+      // Confere de novo na hora de salvar (alguém pode ter pegado o @ agora).
+      try {
+        if (!await SocialService.instance.usuarioDisponivel(usuario)) {
+          if (!mounted) return;
+          setState(() => _estadoUsuario = _EstadoUsuario.ocupado);
+          _formKey.currentState?.validate();
+          return;
+        }
+      } catch (_) {
+        // Falha de rede: segue; o índice único do banco é a garantia final.
+      }
+    }
     // Só conquistas que a pessoa realmente desbloqueou podem ser destacadas.
     final destaque = _conquistasDestaque
         .where(app.conquistasDesbloqueadas.contains)
@@ -115,9 +175,10 @@ class _EditarPerfilPublicoScreenState extends State<EditarPerfilPublicoScreen> {
 
     final perfil = PerfilEditavel(
       nome: _nomeController.text.trim(),
-      usuario: usuario.isEmpty ? null : usuario,
+      usuario: usuario,
       bio: _bioController.text.trim(),
       avatarCor: _avatarCor,
+      avatarUrl: _avatarUrl,
       mostrarPontos: _mostrarPontos,
       mostrarSequencia: _mostrarSequencia,
       mostrarEstatisticas: _mostrarEstatisticas,
@@ -134,6 +195,9 @@ class _EditarPerfilPublicoScreenState extends State<EditarPerfilPublicoScreen> {
         // cartões; a escolha é mantida para quando a pessoa ligar de novo.
         projetosEscolhidos: _projetosEscolhidos,
         app: app,
+        novaFoto: _novaFoto,
+        extensaoFoto: _extensaoFoto,
+        removerFoto: _removerFoto,
       );
       await app.atualizarNome(perfil.nome);
       await social.sincronizar(app, forcar: true);
@@ -144,6 +208,48 @@ class _EditarPerfilPublicoScreenState extends State<EditarPerfilPublicoScreen> {
       setState(() => _salvando = false);
       mostrarMensagem(context, SocialService.traduzirErro(e));
     }
+  }
+
+  static const _tamanhoMaximoFoto = 2 * 1024 * 1024; // 2 MB, igual ao bucket
+
+  Future<void> _escolherFoto() async {
+    try {
+      // No celular a própria galeria já reduz a imagem (512 px). No Windows o
+      // seletor não reduz, por isso o limite de tamanho logo abaixo.
+      final arquivo = await ImagePicker().pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 512,
+        maxHeight: 512,
+        imageQuality: 85,
+      );
+      if (arquivo == null) return;
+      final bytes = await arquivo.readAsBytes();
+      if (!mounted) return;
+      if (bytes.length > _tamanhoMaximoFoto) {
+        mostrarMensagem(context, 'Imagem grande demais. Escolha uma de até 2 MB.');
+        return;
+      }
+      final nome = arquivo.name.toLowerCase();
+      setState(() {
+        _novaFoto = bytes;
+        _extensaoFoto = nome.endsWith('.png')
+            ? 'png'
+            : nome.endsWith('.webp')
+                ? 'webp'
+                : 'jpg';
+        _removerFoto = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      mostrarMensagem(context, 'Não foi possível abrir a imagem: $e');
+    }
+  }
+
+  void _removerFotoAtual() {
+    setState(() {
+      _novaFoto = null;
+      _removerFoto = true;
+    });
   }
 
   @override
@@ -204,17 +310,28 @@ class _EditarPerfilPublicoScreenState extends State<EditarPerfilPublicoScreen> {
             controller: _usuarioController,
             maxLength: 20,
             autocorrect: false,
-            decoration: const InputDecoration(
-              labelText: 'Nome de usuário (opcional)',
+            onChanged: _aoMudarUsuario,
+            decoration: InputDecoration(
+              labelText: 'Nome de usuário (@)',
               prefixText: '@',
-              helperText: 'Letras minúsculas, números e _ (3 a 20 caracteres)',
+              helperText: switch (_estadoUsuario) {
+                _EstadoUsuario.verificando => 'Conferindo se está livre...',
+                _EstadoUsuario.livre => 'Disponível ✓',
+                _ => 'Letras minúsculas, números e _ (3 a 20). Precisa ser '
+                    'único.',
+              },
             ),
             validator: (v) {
               final texto = (v ?? '').trim().toLowerCase();
-              if (texto.isEmpty) return null;
-              return _padraoUsuario.hasMatch(texto)
-                  ? null
-                  : 'Use 3 a 20 letras minúsculas, números ou _';
+              if (texto.isEmpty) return 'Escolha um @ para o seu perfil';
+              if (!_padraoUsuario.hasMatch(texto)) {
+                return 'Use 3 a 20 letras minúsculas, números ou _';
+              }
+              if (texto != _usuarioOriginal &&
+                  _estadoUsuario == _EstadoUsuario.ocupado) {
+                return 'Esse @ já está em uso. Tente outro.';
+              }
+              return null;
             },
           ),
           const SizedBox(height: 4),
@@ -229,40 +346,48 @@ class _EditarPerfilPublicoScreenState extends State<EditarPerfilPublicoScreen> {
             ),
           ),
           const SizedBox(height: 8),
-          Text('Cor do avatar', style: legenda),
           const SizedBox(height: 8),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
+          Text('Foto e cor do avatar', style: legenda),
+          const SizedBox(height: 12),
+          Row(
             children: [
-              GestureDetector(
-                onTap: () => setState(() => _avatarCor = null),
-                child: CircleAvatar(
-                  radius: _avatarCor == null ? 18 : 14,
-                  backgroundColor: tokens.avatarFundo,
-                  child: _avatarCor == null
-                      ? Icon(Icons.check, size: 16, color: tokens.avatarTexto)
-                      : null,
+              AvatarUsuario(
+                nome: _nomeController.text,
+                cor: _avatarCor,
+                imagem: _novaFoto != null ? MemoryImage(_novaFoto!) : null,
+                imagemUrl: _removerFoto ? null : _avatarUrl,
+                raio: 36,
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: _escolherFoto,
+                      icon: const Icon(Icons.photo_library_outlined),
+                      label: const Text('Escolher foto'),
+                    ),
+                    if (_novaFoto != null ||
+                        (_avatarUrl != null && !_removerFoto))
+                      TextButton(
+                        onPressed: _removerFotoAtual,
+                        child: const Text('Remover foto'),
+                      ),
+                  ],
                 ),
               ),
-              for (final cor in coresDeProjeto)
-                GestureDetector(
-                  onTap: () => setState(() => _avatarCor = cor.toARGB32()),
-                  child: CircleAvatar(
-                    radius: _avatarCor == cor.toARGB32() ? 18 : 14,
-                    backgroundColor: cor,
-                    child: _avatarCor == cor.toARGB32()
-                        ? Icon(
-                            Icons.check,
-                            size: 16,
-                            color: cor.computeLuminance() > 0.45
-                                ? Colors.black
-                                : Colors.white,
-                          )
-                        : null,
-                  ),
-                ),
             ],
+          ),
+          const SizedBox(height: 16),
+          Text('Sem foto, o avatar usa a inicial do nome sobre esta cor:',
+              style: legenda),
+          const SizedBox(height: 10),
+          SeletorDeCor(
+            corAtual: _avatarCor,
+            permitirPadrao: true,
+            aoEscolher: (cor) => setState(() => _avatarCor = cor),
           ),
           const SizedBox(height: 28),
           const TituloSecao('O que os outros podem ver'),

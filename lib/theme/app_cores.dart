@@ -1,22 +1,6 @@
 import 'package:flutter/material.dart';
-
 import 'app_palette.dart';
 
-/// Painel de cores do app: UM token por função visual, em vez de um token por
-/// cor. Assim dá para mudar, por exemplo, só o botão de perigo ou só as colunas
-/// do gráfico sem mexer no resto — e várias funções podem apontar para a mesma
-/// cor da [AppPalette] (é só repetir o valor).
-///
-/// Como usar:
-///  * Para mudar uma cor: edite o valor em [AppCores.claro] ou [AppCores.escuro]
-///    (no fim deste arquivo). O `app_theme.dart` lê tudo daqui.
-///  * Num widget: `final cores = context.coresApp;` e depois `cores.curtida`.
-///  * Para criar um token novo: declare o campo, o parâmetro do construtor e os
-///    dois valores (claro e escuro).
-///
-/// Foi escolhido um objeto simples (e não ThemeExtension) para não precisar de
-/// copyWith/lerp em ~100 campos; o tema claro/escuro é escolhido pelo
-/// `Theme.of(context).brightness`.
 class AppCores {
   const AppCores({
     required this.fundoApp,
@@ -104,416 +88,316 @@ class AppCores {
     required this.marcador,
   });
 
-  // ---- Fundos e superfícies ----
-  /// Fundo de todas as telas (Scaffold).
+  // (Todas as variáveis finais mantidas idênticas...)
   final Color fundoApp;
-  /// Barras e painéis um degrau acima do fundo.
   final Color superficie;
-  /// Fundo dos Card (projetos, estatísticas, publicações...).
   final Color cartao;
-  /// Contorno fino dos cartões.
   final Color cartaoBorda;
-  /// Fundo de diálogos (AlertDialog).
   final Color dialogoFundo;
-  /// Linhas divisórias discretas.
   final Color divisor;
-  /// Fundo da AppBar das telas secundárias.
   final Color appBarFundo;
-  /// Título e ícones da AppBar.
   final Color appBarTexto;
-
-  // ---- Navegação inferior ----
-  /// Fundo da barra de abas.
   final Color navegacaoFundo;
-  /// Pílula atrás do ícone da aba selecionada.
   final Color navegacaoIndicador;
-  /// Ícone e rótulo da aba selecionada.
   final Color navegacaoItemAtivo;
-  /// Ícone e rótulo das outras abas.
   final Color navegacaoItemInativo;
-
-  // ---- Texto ----
-  /// Texto de leitura.
   final Color textoPrincipal;
-  /// Subtítulos, datas, legendas.
   final Color textoSecundario;
-  /// Dicas, placeholders e itens inativos.
   final Color textoSuave;
-  /// Contornos que precisam aparecer mais (ColorScheme.outline).
   final Color bordaForte;
-
-  // ---- Botões ----
-  /// FilledButton: fundo.
   final Color botaoPrimarioFundo;
-  /// FilledButton: texto e ícone.
   final Color botaoPrimarioTexto;
-  /// FilledButton desabilitado: fundo.
   final Color botaoDesabilitadoFundo;
-  /// FilledButton desabilitado: texto.
   final Color botaoDesabilitadoTexto;
-  /// OutlinedButton: texto e ícone.
   final Color botaoSecundarioTexto;
-  /// OutlinedButton: contorno.
   final Color botaoSecundarioBorda;
-  /// TextButton (Cancelar, links).
   final Color botaoTextoCor;
-  /// Botão de ação destrutiva (Apagar tudo, Excluir): fundo.
   final Color botaoPerigoFundo;
-  /// Botão destrutivo: texto.
   final Color botaoPerigoTexto;
-  /// Botão destrutivo discreto (aviso antes do diálogo): fundo.
   final Color botaoPerigoSuaveFundo;
-  /// Botão destrutivo discreto: texto.
   final Color botaoPerigoSuaveTexto;
-  /// Botão flutuante (+): fundo.
   final Color fabFundo;
-  /// Botão flutuante (+): ícone.
   final Color fabIcone;
-
-  // ---- Campos de texto ----
-  /// Fundo dos TextField.
   final Color campoFundo;
-  /// Contorno em repouso.
   final Color campoBorda;
-  /// Contorno com o campo focado.
   final Color campoBordaFoco;
-  /// Rótulo e hint.
   final Color campoRotulo;
-  /// Cursor e alças de seleção.
   final Color cursor;
-  /// Fundo do texto selecionado.
   final Color selecaoTexto;
-
-  // ---- Progresso e slider ----
-  /// Barra de progresso: parte preenchida.
   final Color progressoAtivo;
-  /// Barra de progresso: trilho.
   final Color progressoTrilho;
-  /// Slider: parte ativa.
   final Color sliderAtivo;
-  /// Slider: trilho.
   final Color sliderTrilho;
-  /// Slider: bolinha.
   final Color sliderBolinha;
-  /// Slider: halo ao tocar.
   final Color sliderOverlay;
-
-  // ---- Gráficos (fl_chart) ----
-  /// Colunas dos dias não selecionados.
   final Color graficoBarra;
-  /// Coluna do dia selecionado.
   final Color graficoBarraSelecionada;
-  /// Números do eixo e legendas.
   final Color graficoRotulo;
-  /// Rótulo do dia selecionado.
   final Color graficoRotuloSelecionado;
-  /// Balão ao tocar numa coluna.
   final Color graficoTooltipFundo;
-  /// Texto do balão.
   final Color graficoTooltipTexto;
-
-  // ---- Ícones ----
-  /// Ícones comuns.
   final Color iconePadrao;
-  /// Ícones de destaque (cabeçalhos, atalhos).
   final Color iconeDestaque;
-  /// Ícones secundários (ações de cartão).
   final Color iconeSuave;
-
-  // ---- Chips e controles (switch, radio) ----
-  /// Chip não selecionado.
   final Color chipFundo;
-  /// Chip selecionado.
   final Color chipFundoSelecionado;
-  /// Texto do chip.
   final Color chipTexto;
-  /// Texto e check do chip selecionado.
   final Color chipTextoSelecionado;
-  /// Contorno do chip.
   final Color chipBorda;
-  /// Switch ligado / radio marcado.
   final Color controleAtivo;
-  /// Bolinha do switch ligado.
   final Color controleAtivoSobre;
-  /// Contorno do switch/radio desligado.
   final Color controleInativoBorda;
-  /// Trilho do switch desligado.
   final Color controleInativoTrilho;
-  /// Bolinha do switch desligado.
   final Color controleInativoBolinha;
-
-  // ---- Abas do feed ----
-  /// Rótulo da aba selecionada.
   final Color abaAtiva;
-  /// Rótulo das outras abas.
   final Color abaInativa;
-  /// Sublinhado da aba selecionada.
   final Color abaIndicador;
-
-  // ---- Feedback ----
-  /// SnackBar: fundo.
   final Color snackbarFundo;
-  /// SnackBar: texto.
   final Color snackbarTexto;
-  /// Tooltip: fundo.
   final Color tooltipFundo;
-  /// Tooltip: texto.
   final Color tooltipTexto;
-  /// Erros e avisos de perigo (ColorScheme.error).
   final Color perigo;
-  /// Texto sobre a cor de perigo.
   final Color perigoSobre;
-  /// Confirmações.
   final Color sucesso;
-
-  // ---- Conquistas ----
-  /// Cartão de conquista desbloqueada.
   final Color conquistaFundo;
-  /// Ícone da conquista desbloqueada.
   final Color conquistaIcone;
-  /// Nome da conquista desbloqueada.
   final Color conquistaTexto;
-  /// Cartão de conquista bloqueada.
   final Color conquistaBloqueadaFundo;
-  /// Ícone da conquista bloqueada.
   final Color conquistaBloqueadaIcone;
-  /// Nome da conquista bloqueada.
   final Color conquistaBloqueadaTexto;
-
-  // ---- Parte social ----
-  /// Coração de curtida ativo.
   final Color curtida;
-  /// Selo de atividade compartilhada (projeto, conquista...).
   final Color emblemaFundo;
-  /// Texto do selo.
   final Color emblemaTexto;
-  /// Ícone do selo.
   final Color emblemaIcone;
-  /// Avatar sem cor escolhida.
   final Color avatarFundo;
-  /// Inicial do avatar sem cor escolhida.
   final Color avatarTexto;
-  /// Sublinhado curto dos títulos de seção.
   final Color marcador;
 
-  /// Botão de ação destrutiva (ex.: confirmar "Apagar tudo").
   ButtonStyle get estiloBotaoPerigo => FilledButton.styleFrom(
         backgroundColor: botaoPerigoFundo,
         foregroundColor: botaoPerigoTexto,
       );
 
-  /// Versão discreta, para o botão que só abre o diálogo de confirmação.
   ButtonStyle get estiloBotaoPerigoSuave => FilledButton.styleFrom(
         backgroundColor: botaoPerigoSuaveFundo,
         foregroundColor: botaoPerigoSuaveTexto,
       );
 
-  /// Tema claro (cinza e grafite).
+  /// --- TEMA CLARO ---
   static const claro = AppCores(
-    // Fundos e superfícies
     fundoApp: AppPalette.lightBackground,
     superficie: AppPalette.lightSurface,
-    cartao: AppPalette.lightSurface,
+    cartao: AppPalette.lightCard,
     cartaoBorda: AppPalette.lightBorder,
     dialogoFundo: AppPalette.lightSurface,
     divisor: AppPalette.lightBorder,
     appBarFundo: AppPalette.lightBackground,
     appBarTexto: AppPalette.lightText,
-    // Navegação inferior
+    
     navegacaoFundo: AppPalette.lightSurface,
-    navegacaoIndicador: AppPalette.lightBackground,
-    navegacaoItemAtivo: AppPalette.graphite,
+    navegacaoIndicador: Color(0xFFE0D8CF),
+    navegacaoItemAtivo: AppPalette.lightText,
     navegacaoItemInativo: AppPalette.lightMuted,
-    // Texto
+    
     textoPrincipal: AppPalette.lightText,
-    textoSecundario: Color(0xFF404040),
+    textoSecundario: Color(0xFF4A5C68),
     textoSuave: AppPalette.lightMuted,
-    bordaForte: AppPalette.lightMuted,
-    // Botões
-    botaoPrimarioFundo: AppPalette.graphite,
-    botaoPrimarioTexto: AppPalette.lightSurface,
-    botaoDesabilitadoFundo: AppPalette.lightBorder,
+    bordaForte: Color(0xFFB0A8A0),
+    
+    // Alto contraste garantido: Fundo escuro (#365673) com texto Branco
+    botaoPrimarioFundo: AppPalette.graphite, 
+    botaoPrimarioTexto: Color(0xFFFFFFFF),
+    botaoDesabilitadoFundo: Color(0xFFDCD6D0),
     botaoDesabilitadoTexto: AppPalette.lightMuted,
     botaoSecundarioTexto: AppPalette.graphite,
-    botaoSecundarioBorda: AppPalette.lightMuted,
+    botaoSecundarioBorda: AppPalette.graphite,
     botaoTextoCor: AppPalette.graphite,
-    botaoPerigoFundo: Color(0xFFA33A3A),
-    botaoPerigoTexto: AppPalette.lightSurface,
-    botaoPerigoSuaveFundo: Color(0xFFE6D0D0),
-    botaoPerigoSuaveTexto: Color(0xFF5C1F1F),
-    fabFundo: AppPalette.lightBorder,
-    fabIcone: AppPalette.lightText,
-    // Campos de texto
+    
+    botaoPerigoFundo: Color(0xFFD95A2B),
+    botaoPerigoTexto: Color(0xFFFFFFFF),
+    botaoPerigoSuaveFundo: Color(0xFFF9EAE5),
+    botaoPerigoSuaveTexto: Color(0xFFD95A2B),
+    
+    // FAB com contraste perfeito
+    fabFundo: AppPalette.graphite,
+    fabIcone: Color(0xFFFFFFFF),
+    
     campoFundo: AppPalette.lightSurface,
     campoBorda: AppPalette.lightBorder,
     campoBordaFoco: AppPalette.graphite,
     campoRotulo: AppPalette.lightMuted,
     cursor: AppPalette.graphite,
-    selecaoTexto: Color(0x55404040),
-    // Progresso e slider
-    progressoAtivo: AppPalette.graphite,
-    progressoTrilho: AppPalette.lightBorder,
-    sliderAtivo: AppPalette.graphite,
-    sliderTrilho: AppPalette.lightBorder,
-    sliderBolinha: AppPalette.graphite,
-    sliderOverlay: Color(0x1F404040),
-    // Gráficos (fl_chart)
-    graficoBarra: AppPalette.lightMuted,
-    graficoBarraSelecionada: AppPalette.graphite,
-    graficoRotulo: Color(0xFF404040),
-    graficoRotuloSelecionado: AppPalette.graphite,
-    graficoTooltipFundo: AppPalette.graphite,
-    graficoTooltipTexto: AppPalette.lightSurface,
-    // Ícones
+    selecaoTexto: Color(0x354D7A8C),
+    
+    progressoAtivo: Color(0xFF4D7A8C),
+    progressoTrilho: Color(0xFFD9D0C7),
+    sliderAtivo: Color(0xFF4D7A8C),
+    sliderTrilho: Color(0xFFD9D0C7),
+    sliderBolinha: Color(0xFF4D7A8C),
+    sliderOverlay: Color(0x1F4D7A8C),
+    
+    // Gráficos usam a cor Laranja da paleta (#D95A2B)
+    graficoBarra: AppPalette.lightBorder,
+    graficoBarraSelecionada: Color(0xFFD95A2B),
+    graficoRotulo: AppPalette.lightMuted,
+    graficoRotuloSelecionado: Color(0xFFD95A2B),
+    graficoTooltipFundo: AppPalette.lightText,
+    graficoTooltipTexto: Color(0xFFFFFFFF),
+    
     iconePadrao: AppPalette.lightText,
-    iconeDestaque: AppPalette.graphite,
+    iconeDestaque: Color(0xFF4D7A8C),
     iconeSuave: AppPalette.lightMuted,
-    // Chips e controles (switch, radio)
-    chipFundo: AppPalette.lightSurface,
-    chipFundoSelecionado: AppPalette.graphite,
+    
+    chipFundo: AppPalette.lightCard,
+    chipFundoSelecionado: Color(0xFFE5EEF2),
     chipTexto: AppPalette.lightText,
-    chipTextoSelecionado: AppPalette.lightSurface,
+    chipTextoSelecionado: AppPalette.graphite,
     chipBorda: AppPalette.lightBorder,
-    controleAtivo: AppPalette.graphite,
-    controleAtivoSobre: AppPalette.lightSurface,
-    controleInativoBorda: AppPalette.lightMuted,
-    controleInativoTrilho: AppPalette.lightBorder,
+    
+    controleAtivo: Color(0xFF4D7A8C),
+    controleAtivoSobre: Color(0xFFFFFFFF),
+    controleInativoBorda: Color(0xFFB0A8A0),
+    controleInativoTrilho: Color(0xFFD9D0C7),
     controleInativoBolinha: AppPalette.lightMuted,
-    // Abas do feed
+    
     abaAtiva: AppPalette.graphite,
     abaInativa: AppPalette.lightMuted,
     abaIndicador: AppPalette.graphite,
-    // Feedback
-    snackbarFundo: AppPalette.graphite,
-    snackbarTexto: AppPalette.lightSurface,
-    tooltipFundo: AppPalette.graphite,
-    tooltipTexto: AppPalette.lightSurface,
-    perigo: Color(0xFFA33A3A),
-    perigoSobre: AppPalette.lightSurface,
-    sucesso: Color(0xFF3F6B4F),
-    // Conquistas
-    conquistaFundo: AppPalette.lightBorder,
-    conquistaIcone: AppPalette.lightText,
-    conquistaTexto: AppPalette.lightText,
-    conquistaBloqueadaFundo: AppPalette.lightSurface,
+    
+    snackbarFundo: AppPalette.lightText,
+    snackbarTexto: Color(0xFFFFFFFF),
+    tooltipFundo: AppPalette.lightText,
+    tooltipTexto: Color(0xFFFFFFFF),
+    
+    perigo: Color(0xFFD95A2B),
+    perigoSobre: Color(0xFFFFFFFF),
+    sucesso: Color(0xFF429867),
+    
+    conquistaFundo: Color(0xFFF9EAE5),
+    conquistaIcone: Color(0xFFD95A2B),
+    conquistaTexto: Color(0xFF8C3A1C),
+    conquistaBloqueadaFundo: AppPalette.lightCard,
     conquistaBloqueadaIcone: AppPalette.lightMuted,
     conquistaBloqueadaTexto: AppPalette.lightMuted,
-    // Parte social
-    curtida: Color(0xFFA33A3A),
-    emblemaFundo: AppPalette.lightBackground,
-    emblemaTexto: AppPalette.lightText,
-    emblemaIcone: AppPalette.graphite,
-    avatarFundo: AppPalette.lightMuted,
-    avatarTexto: AppPalette.lightSurface,
-    marcador: AppPalette.graphite,
+    
+    curtida: Color(0xFFD95A2B),
+    emblemaFundo: Color(0xFFE5EEF2),
+    emblemaTexto: AppPalette.graphite,
+    emblemaIcone: Color(0xFF4D7A8C),
+    avatarFundo: AppPalette.lightBorder,
+    avatarTexto: AppPalette.lightText,
+    marcador: Color(0xFFD95A2B),
   );
 
-  /// Tema escuro (azul-ardósia).
+  /// --- TEMA ESCURO ---
   static const escuro = AppCores(
-    // Fundos e superfícies
     fundoApp: AppPalette.darkBackground,
     superficie: AppPalette.darkSurface,
     cartao: AppPalette.darkCard,
-    cartaoBorda: Color(0x59536173) /* slateBlue a 35% */,
+    cartaoBorda: AppPalette.darkBorder,
     dialogoFundo: AppPalette.darkSurface,
-    divisor: Color(0x59536173) /* slateBlue a 35% */,
+    divisor: AppPalette.darkBorder,
     appBarFundo: AppPalette.darkBackground,
     appBarTexto: AppPalette.darkText,
-    // Navegação inferior
+    
     navegacaoFundo: AppPalette.darkBackground,
-    navegacaoIndicador: AppPalette.darkSurface,
-    navegacaoItemAtivo: AppPalette.darkText,
+    navegacaoIndicador: AppPalette.slateBlue,
+    navegacaoItemAtivo: Color(0xFFFFFFFF),
     navegacaoItemInativo: AppPalette.darkMuted,
-    // Texto
+    
     textoPrincipal: AppPalette.darkText,
-    textoSecundario: AppPalette.darkMuted,
+    textoSecundario: Color(0xFFC4CEC3),
     textoSuave: AppPalette.darkMuted,
-    bordaForte: AppPalette.slateBlue,
-    // Botões
-    botaoPrimarioFundo: AppPalette.darkText,
-    botaoPrimarioTexto: AppPalette.darkBackground,
-    botaoDesabilitadoFundo: AppPalette.darkBorder,
-    botaoDesabilitadoTexto: AppPalette.darkMuted,
+    bordaForte: Color(0xFF3F3F3F),
+    
+    // Contraste: Fundo Azul (#204370) com Ícone/Texto Branco
+    botaoPrimarioFundo: AppPalette.slateBlue,
+    botaoPrimarioTexto: Color(0xFFFFFFFF),
+    botaoDesabilitadoFundo: Color(0xFF1E1E1E),
+    botaoDesabilitadoTexto: Color(0xFF5A5A5A),
     botaoSecundarioTexto: AppPalette.darkText,
     botaoSecundarioBorda: AppPalette.slateBlue,
-    botaoTextoCor: AppPalette.darkMuted,
-    botaoPerigoFundo: Color(0xFFD98A8A),
-    botaoPerigoTexto: AppPalette.darkBackground,
-    botaoPerigoSuaveFundo: Color(0xFF3A2427),
-    botaoPerigoSuaveTexto: Color(0xFFF0C9C9),
-    fabFundo: AppPalette.slateBlue,
-    fabIcone: AppPalette.darkText,
-    // Campos de texto
-    campoFundo: AppPalette.darkCard,
+    botaoTextoCor: AppPalette.paleSlateBlue,
+    
+    botaoPerigoFundo: Color(0xFFBF0413),
+    botaoPerigoTexto: Color(0xFFFFFFFF),
+    botaoPerigoSuaveFundo: Color(0xFF73030D),
+    botaoPerigoSuaveTexto: Color(0xFFF29D9D),
+    
+    // FAB com destaque usando vermelho vibrante da paleta
+    fabFundo: Color.fromARGB(255, 182, 67, 32),
+    fabIcone: Color(0xFFFFFFFF),
+    
+    campoFundo: AppPalette.darkSurface,
     campoBorda: AppPalette.darkBorder,
     campoBordaFoco: AppPalette.paleSlateBlue,
     campoRotulo: AppPalette.darkMuted,
     cursor: AppPalette.paleSlateBlue,
-    selecaoTexto: Color(0x558593A6),
-    // Progresso e slider
+    selecaoTexto: Color(0x454D7A8C),
+    
     progressoAtivo: AppPalette.paleSlateBlue,
-    progressoTrilho: AppPalette.slateBlue,
+    progressoTrilho: Color(0xFF2C2C2C),
     sliderAtivo: AppPalette.paleSlateBlue,
-    sliderTrilho: AppPalette.slateBlue,
+    sliderTrilho: Color(0xFF2C2C2C),
     sliderBolinha: AppPalette.paleSlateBlue,
-    sliderOverlay: Color(0x338593A6),
-    // Gráficos (fl_chart)
-    graficoBarra: AppPalette.slateBlue,
-    graficoBarraSelecionada: AppPalette.paleSlateBlue,
+    sliderOverlay: Color(0x2F4D7A8C),
+    
+    // Gráficos ganham o vermelho suave gamificado
+    graficoBarra: AppPalette.darkBorder,
+    graficoBarraSelecionada: Color(0xFFBF2C2C),
     graficoRotulo: AppPalette.darkMuted,
-    graficoRotuloSelecionado: AppPalette.paleSlateBlue,
-    graficoTooltipFundo: AppPalette.darkText,
-    graficoTooltipTexto: AppPalette.darkBackground,
-    // Ícones
+    graficoRotuloSelecionado: Color(0xFFBF2C2C),
+    graficoTooltipFundo: Color(0xFF2C2C2C),
+    graficoTooltipTexto: Color(0xFFFFFFFF),
+    
     iconePadrao: AppPalette.darkText,
     iconeDestaque: AppPalette.paleSlateBlue,
     iconeSuave: AppPalette.darkMuted,
-    // Chips e controles (switch, radio)
+    
     chipFundo: AppPalette.darkCard,
     chipFundoSelecionado: AppPalette.slateBlue,
     chipTexto: AppPalette.darkText,
-    chipTextoSelecionado: AppPalette.darkText,
+    chipTextoSelecionado: Color(0xFFFFFFFF),
     chipBorda: AppPalette.darkBorder,
+    
     controleAtivo: AppPalette.paleSlateBlue,
-    controleAtivoSobre: AppPalette.darkBackground,
-    controleInativoBorda: AppPalette.slateBlue,
-    controleInativoTrilho: AppPalette.darkBackground,
+    controleAtivoSobre: Color(0xFFFFFFFF),
+    controleInativoBorda: Color(0xFF3F3F3F),
+    controleInativoTrilho: Color(0xFF2C2C2C),
     controleInativoBolinha: AppPalette.darkMuted,
-    // Abas do feed
+    
     abaAtiva: AppPalette.darkText,
     abaInativa: AppPalette.darkMuted,
     abaIndicador: AppPalette.paleSlateBlue,
-    // Feedback
-    snackbarFundo: AppPalette.darkText,
-    snackbarTexto: AppPalette.darkBackground,
-    tooltipFundo: AppPalette.darkText,
-    tooltipTexto: AppPalette.darkBackground,
-    perigo: Color(0xFFD98A8A),
-    perigoSobre: AppPalette.darkBackground,
-    sucesso: Color(0xFF8FBF9F),
-    // Conquistas
-    conquistaFundo: AppPalette.slateBlue,
-    conquistaIcone: AppPalette.darkText,
-    conquistaTexto: AppPalette.darkText,
+    
+    snackbarFundo: Color(0xFF2C2C2C),
+    snackbarTexto: Color(0xFFFFFFFF),
+    tooltipFundo: Color(0xFF2C2C2C),
+    tooltipTexto: Color(0xFFFFFFFF),
+    
+    perigo: Color(0xFFBF0413),
+    perigoSobre: Color(0xFFFFFFFF),
+    sucesso: Color(0xFF429867),
+    
+    conquistaFundo: Color(0xFF73030D),
+    conquistaIcone: Color(0xFFBF2C2C),
+    conquistaTexto: Color(0xFFF2D5D5),
     conquistaBloqueadaFundo: AppPalette.darkSurface,
-    conquistaBloqueadaIcone: AppPalette.slateBlue,
+    conquistaBloqueadaIcone: Color(0xFF2C2C2C),
     conquistaBloqueadaTexto: AppPalette.darkMuted,
-    // Parte social
-    curtida: Color(0xFFD98A8A),
-    emblemaFundo: AppPalette.darkBackground,
-    emblemaTexto: AppPalette.darkText,
+    
+    curtida: Color.fromARGB(255, 241, 37, 54),
+    emblemaFundo: AppPalette.slateBlue,
+    emblemaTexto: Color(0xFFFFFFFF),
     emblemaIcone: AppPalette.paleSlateBlue,
-    avatarFundo: AppPalette.slateBlue,
+    avatarFundo: Color(0xFF2C2C2C),
     avatarTexto: AppPalette.darkText,
-    marcador: AppPalette.paleSlateBlue,
+    marcador: Color(0xFFBF2C2C),
   );
-
 }
 
 extension AppCoresNoContexto on BuildContext {
-  /// Tokens de cor do tema atual (claro ou escuro).
   AppCores get coresApp => Theme.of(this).brightness == Brightness.dark
       ? AppCores.escuro
       : AppCores.claro;
 }
-

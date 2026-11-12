@@ -8,11 +8,15 @@ class PerfilResumo {
   /// Cor do avatar como inteiro ARGB (mesmas cores dos projetos). Nulo = padrão do tema.
   final int? avatarCor;
 
+  /// Foto de perfil (endereço público no Storage). Nulo = só inicial + cor.
+  final String? avatarUrl;
+
   const PerfilResumo({
     required this.id,
     required this.nome,
     this.usuario,
     this.avatarCor,
+    this.avatarUrl,
   });
 
   factory PerfilResumo.fromMap(Map<String, dynamic> map) {
@@ -21,6 +25,7 @@ class PerfilResumo {
       nome: (map['nome'] as String?) ?? 'Estudante',
       usuario: map['usuario'] as String?,
       avatarCor: (map['avatar_cor'] as num?)?.toInt(),
+      avatarUrl: map['avatar_url'] as String?,
     );
   }
 }
@@ -124,6 +129,7 @@ class PerfilEditavel {
   final String? usuario;
   final String bio;
   final int? avatarCor;
+  final String? avatarUrl;
 
   final bool mostrarPontos;
   final bool mostrarSequencia;
@@ -138,6 +144,7 @@ class PerfilEditavel {
     this.usuario,
     this.bio = '',
     this.avatarCor,
+    this.avatarUrl,
     this.mostrarPontos = false,
     this.mostrarSequencia = false,
     this.mostrarEstatisticas = false,
@@ -145,6 +152,23 @@ class PerfilEditavel {
     this.mostrarProjetos = false,
     this.conquistasDestaque = const [],
   });
+
+  /// Cópia com outro endereço de foto (nulo remove a foto).
+  PerfilEditavel comAvatarUrl(String? url) {
+    return PerfilEditavel(
+      nome: nome,
+      usuario: usuario,
+      bio: bio,
+      avatarCor: avatarCor,
+      avatarUrl: url,
+      mostrarPontos: mostrarPontos,
+      mostrarSequencia: mostrarSequencia,
+      mostrarEstatisticas: mostrarEstatisticas,
+      mostrarConquistas: mostrarConquistas,
+      mostrarProjetos: mostrarProjetos,
+      conquistasDestaque: conquistasDestaque,
+    );
+  }
 
   /// Nada ligado = o perfil público só mostra nome e bio.
   bool get tudoPrivado =>
@@ -164,6 +188,7 @@ class PerfilEditavel {
       usuario: perfil['usuario'] as String?,
       bio: (perfil['bio'] as String?) ?? '',
       avatarCor: (perfil['avatar_cor'] as num?)?.toInt(),
+      avatarUrl: perfil['avatar_url'] as String?,
       mostrarPontos: (perfil['mostrar_pontos'] as bool?) ?? false,
       mostrarSequencia: (perfil['mostrar_sequencia'] as bool?) ?? false,
       mostrarEstatisticas: (perfil['mostrar_estatisticas'] as bool?) ?? false,

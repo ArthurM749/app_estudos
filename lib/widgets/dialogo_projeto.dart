@@ -4,14 +4,8 @@ import 'package:provider/provider.dart';
 import '../data/app_state.dart';
 import '../models/projeto.dart';
 import '../screens/projeto_detalhe_screen.dart';
-
-const coresDeProjeto = [
-  Color(0xFF536173),
-  Color(0xFF8593A6),
-  Color(0xFF737373),
-  Color(0xFFA6A6A6),
-  Color(0xFFD9D9D9),
-];
+import '../theme/cores_de_escolha.dart';
+import 'seletor_de_cor.dart';
 
 Future<void> abrirDialogoProjeto(
   BuildContext context, {
@@ -19,12 +13,10 @@ Future<void> abrirDialogoProjeto(
 }) async {
   final appState = context.read<AppState>();
   final controller = TextEditingController(text: projetoExistente?.nome ?? '');
-  var corEscolhida = projetoExistente != null
-      ? coresDeProjeto.firstWhere(
-          (c) => c.value == projetoExistente.cor,
-          orElse: () => coresDeProjeto[1],
-        )
-      : coresDeProjeto.first;
+  // Valor ARGB da cor. Um projeto antigo com cor fora da paleta atual mantém a
+  // sua (o seletor mostra como "Atual") até a pessoa escolher outra.
+  var corEscolhida =
+      projetoExistente?.cor ?? opcoesDeCor.first.cor.toARGB32();
   var modoEscolhido =
       projetoExistente?.modoProgresso ?? ModoProgresso.porTarefas;
 
@@ -49,27 +41,10 @@ Future<void> abrirDialogoProjeto(
                     onChanged: (_) => setStateDialog(() {}),
                   ),
                   const SizedBox(height: 16),
-                  Wrap(
-                    spacing: 8,
-                    children: coresDeProjeto.map((cor) {
-                      final selecionada = cor.value == corEscolhida.value;
-                      return GestureDetector(
-                        onTap: () => setStateDialog(() => corEscolhida = cor),
-                        child: CircleAvatar(
-                          backgroundColor: cor,
-                          radius: selecionada ? 18 : 14,
-                          child: selecionada
-                              ? Icon(
-                                  Icons.check,
-                                  color: cor.computeLuminance() > 0.45
-                                      ? Colors.black
-                                      : Colors.white,
-                                  size: 16,
-                                )
-                              : null,
-                        ),
-                      );
-                    }).toList(),
+                  SeletorDeCor(
+                    corAtual: corEscolhida,
+                    aoEscolher: (cor) =>
+                        setStateDialog(() => corEscolhida = cor ?? corEscolhida),
                   ),
                   const SizedBox(height: 16),
                   const Text('Progresso definido por',
@@ -120,7 +95,7 @@ Future<void> abrirDialogoProjeto(
   if (projetoExistente == null) {
     final criado = await appState.criarProjeto(
       nome: nome,
-      cor: corEscolhida.value,
+      cor: corEscolhida,
       modoProgresso: modoEscolhido,
     );
     if (context.mounted) {
@@ -133,7 +108,7 @@ Future<void> abrirDialogoProjeto(
     await appState.editarProjeto(
       projetoId: projetoExistente.id!,
       nome: nome,
-      cor: corEscolhida.value,
+      cor: corEscolhida,
       modoProgresso: modoEscolhido,
     );
   }

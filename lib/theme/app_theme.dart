@@ -2,11 +2,9 @@ import 'package:flutter/material.dart';
 
 import 'app_cores.dart';
 
-// Reexporta para que quem já importava `AppPalette` daqui continue funcionando.
 export 'app_palette.dart';
 
-/// Monta o [ThemeData] a partir dos tokens de [AppCores]. Este arquivo não tem
-/// nenhuma cor escrita à mão: para mudar o visual, mexa em `app_cores.dart`.
+/// Monta o [ThemeData] a partir dos tokens de [AppCores].
 class AppTheme {
   AppTheme._();
 
@@ -14,10 +12,6 @@ class AppTheme {
   static ThemeData get dark => _construir(AppCores.escuro, Brightness.dark);
 
   static ThemeData _construir(AppCores c, Brightness brilho) {
-    // Todos os papéis do ColorScheme são preenchidos de propósito. Quando um
-    // papel fica de fora, o Material 3 completa com o roxo/rosa padrão dele —
-    // foi assim que o botão "Apagar todos os dados" ficou rosado sem ninguém
-    // ter escolhido essa cor.
     final esquema = ColorScheme(
       brightness: brilho,
       primary: c.botaoPrimarioFundo,
@@ -41,8 +35,6 @@ class AppTheme {
       onSurfaceVariant: c.textoSecundario,
       surfaceDim: c.fundoApp,
       surfaceBright: c.superficie,
-      // O Card do Material 3 usa surfaceContainerLow e o AlertDialog usa
-      // surfaceContainerHigh como cor de fundo.
       surfaceContainerLowest: c.fundoApp,
       surfaceContainerLow: c.cartao,
       surfaceContainer: c.superficie,
@@ -55,7 +47,6 @@ class AppTheme {
       inverseSurface: c.snackbarFundo,
       onInverseSurface: c.snackbarTexto,
       inversePrimary: c.iconeDestaque,
-      // Sem "tint": o Material 3 pintaria cartões elevados com essa cor.
       surfaceTint: Colors.transparent,
     );
 

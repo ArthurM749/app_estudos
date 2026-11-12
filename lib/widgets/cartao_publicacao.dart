@@ -6,6 +6,23 @@ import '../utils/formatadores.dart';
 import '../utils/icones_conquistas.dart';
 import 'avatar_usuario.dart';
 
+/// Ícone de cada tipo de publicação (usado no cartão e na pré-visualização ao
+/// compartilhar uma atividade).
+IconData iconeDaPublicacao(TipoPublicacao tipo, String? conquistaId) {
+  switch (tipo) {
+    case TipoPublicacao.projetoConcluido:
+      return Icons.task_alt;
+    case TipoPublicacao.conquista:
+      return iconeDaConquista(conquistaId);
+    case TipoPublicacao.sequencia:
+      return Icons.local_fire_department;
+    case TipoPublicacao.evolucao:
+      return Icons.trending_up;
+    case TipoPublicacao.texto:
+      return Icons.notes;
+  }
+}
+
 /// Cartão de uma publicação (feed, perfil e detalhe). Só desenha: quem decide o
 /// que acontece ao tocar é a tela que o usa, via callbacks.
 class CartaoPublicacao extends StatelessWidget {
@@ -17,29 +34,18 @@ class CartaoPublicacao extends StatelessWidget {
   /// Se não for nulo, mostra o menu "Excluir" (só para o autor).
   final VoidCallback? aoExcluir;
 
+  /// Em listas (feed, perfil) mostra só o começo do texto; no detalhe, inteiro.
+  final bool resumido;
+
   const CartaoPublicacao({
     super.key,
+    this.resumido = false,
     required this.publicacao,
     this.aoCurtir,
     this.aoAbrir,
     this.aoAbrirPerfil,
     this.aoExcluir,
   });
-
-  IconData _iconeDoTipo() {
-    switch (publicacao.tipo) {
-      case TipoPublicacao.projetoConcluido:
-        return Icons.task_alt;
-      case TipoPublicacao.conquista:
-        return iconeDaConquista(publicacao.metaConquistaId);
-      case TipoPublicacao.sequencia:
-        return Icons.local_fire_department;
-      case TipoPublicacao.evolucao:
-        return Icons.trending_up;
-      case TipoPublicacao.texto:
-        return Icons.notes;
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -68,6 +74,7 @@ class CartaoPublicacao extends StatelessWidget {
                     AvatarUsuario(
                       nome: autor.nome,
                       cor: autor.avatarCor,
+                      imagemUrl: autor.avatarUrl,
                       aoTocar: aoAbrirPerfil,
                     ),
                     const SizedBox(width: 12),
@@ -124,7 +131,7 @@ class CartaoPublicacao extends StatelessWidget {
                     ),
                     child: Row(
                       children: [
-                        Icon(_iconeDoTipo(),
+                        Icon(iconeDaPublicacao(publicacao.tipo, publicacao.metaConquistaId),
                             color: tokens.emblemaIcone, size: 24),
                         const SizedBox(width: 12),
                         Expanded(
@@ -153,10 +160,29 @@ class CartaoPublicacao extends StatelessWidget {
                   ),
                 ),
               ],
-              const SizedBox(height: 12),
+              // Anotações/artigos têm título próprio; nas atividades o título já
+              // aparece no emblema acima.
+              if (publicacao.tipo == TipoPublicacao.texto &&
+                  publicacao.titulo != null) ...[
+                const SizedBox(height: 12),
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: Text(
+                    publicacao.titulo!,
+                    style:
+                        tema.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 8),
               Padding(
                 padding: const EdgeInsets.only(right: 8),
-                child: Text(publicacao.conteudo, style: tema.bodyLarge),
+                child: Text(
+                  publicacao.conteudo,
+                  style: tema.bodyLarge,
+                  maxLines: resumido ? 6 : null,
+                  overflow: resumido ? TextOverflow.ellipsis : null,
+                ),
               ),
               const SizedBox(height: 4),
               Row(

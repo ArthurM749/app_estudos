@@ -3,7 +3,9 @@ import 'package:provider/provider.dart';
 
 import '../data/app_state.dart';
 import '../data/database_helper.dart';
+import '../data/social_state.dart';
 import '../models/item.dart';
+import '../theme/app_cores.dart';
 import '../widgets/cabecalho_da_aba.dart';
 import 'anotacao_editor_screen.dart';
 
@@ -65,7 +67,11 @@ class _AnotacoesScreenState extends State<AnotacoesScreen> {
       builder: (dialogContext) => AlertDialog(
         title: const Text('Excluir anotação?'),
         content: Text(
-          'Isso vai apagar "${item.titulo}" e não pode ser desfeito.',
+          item.querPublicada
+              ? 'Isso vai apagar "${item.titulo}" do aparelho e também a '
+                  'publicação no feed (sem internet, ela sai quando voltar). '
+                  'Não pode ser desfeito.'
+              : 'Isso vai apagar "${item.titulo}" e não pode ser desfeito.',
         ),
         actions: [
           TextButton(
@@ -79,10 +85,13 @@ class _AnotacoesScreenState extends State<AnotacoesScreen> {
         ],
       ),
     );
-    if (confirmou == true) {
-      await context.read<AppState>().excluirItem(item);
-      if (mounted) setState(() {});
-    }
+    if (confirmou != true || !context.mounted) return;
+    // Some do aparelho na hora; a publicação (se houver) sai da nuvem agora ou
+    // quando a internet voltar.
+    await context
+        .read<SocialState>()
+        .excluirAnotacao(item, context.read<AppState>());
+    if (mounted) setState(() {});
   }
 
   @override
@@ -192,10 +201,15 @@ class _AnotacoesScreenState extends State<AnotacoesScreen> {
                         margin: const EdgeInsets.only(bottom: 10),
                         child: ListTile(
                           leading: Icon(
-                            item.visibilidade == Visibilidade.publica
-                                ? Icons.public
-                                : Icons.lock_outline,
+                            item.aguardandoEnvio
+                                ? Icons.cloud_upload_outlined
+                                : (item.querPublicada
+                                    ? Icons.public
+                                    : Icons.lock_outline),
                             size: 20,
+                            color: item.querPublicada
+                                ? context.coresApp.iconeDestaque
+                                : context.coresApp.iconeSuave,
                           ),
                           title: Text(item.titulo),
                           subtitle: Column(

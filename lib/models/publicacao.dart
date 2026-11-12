@@ -1,7 +1,8 @@
 import 'perfil_social.dart';
 
-/// Tipo da publicação. `texto` é a publicação comum; os outros são atividades de
-/// estudo que a pessoa escolheu compartilhar (nunca saem sozinhas).
+/// Tipo da publicação. `texto` é a anotação/artigo que a pessoa escolheu
+/// publicar; os outros são atividades de estudo que ela escolheu compartilhar
+/// (nada sai sozinho).
 enum TipoPublicacao {
   texto,
   projetoConcluido,
@@ -36,6 +37,10 @@ enum TipoPublicacao {
 class Publicacao {
   final String id;
   final PerfilResumo autor;
+
+  /// Título da publicação (anotação ou atividade). Pode não existir em
+  /// publicações antigas, feitas só com texto.
+  final String? titulo;
   final String conteudo;
   final TipoPublicacao tipo;
 
@@ -56,6 +61,7 @@ class Publicacao {
   const Publicacao({
     required this.id,
     required this.autor,
+    this.titulo,
     required this.conteudo,
     required this.tipo,
     required this.meta,
@@ -74,6 +80,7 @@ class Publicacao {
     return Publicacao(
       id: id,
       autor: autor,
+      titulo: titulo,
       conteudo: conteudo,
       tipo: tipo,
       meta: meta,
@@ -83,6 +90,11 @@ class Publicacao {
       comentarios: comentarios ?? this.comentarios,
       curtidaPorMim: curtidaPorMim ?? this.curtidaPorMim,
     );
+  }
+
+  static String? _tituloLimpo(String? texto) {
+    final limpo = texto?.trim();
+    return (limpo == null || limpo.isEmpty) ? null : limpo;
   }
 
   /// O PostgREST devolve contagens embutidas assim: `curtidas: [{count: 3}]`.
@@ -104,6 +116,7 @@ class Publicacao {
       autor: autorMapa != null
           ? PerfilResumo.fromMap(Map<String, dynamic>.from(autorMapa))
           : PerfilResumo(id: map['autor_id'] as String, nome: 'Estudante'),
+      titulo: _tituloLimpo(map['titulo'] as String?),
       conteudo: map['conteudo'] as String,
       tipo: TipoPublicacao.deBanco(map['tipo'] as String?),
       meta: Map<String, dynamic>.from((map['meta'] as Map?) ?? const {}),

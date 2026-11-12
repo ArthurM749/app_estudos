@@ -1,3 +1,7 @@
+import 'dart:async' show TimeoutException;
+import 'dart:io' show SocketException;
+import 'dart:typed_data';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/perfil_social.dart';
@@ -24,7 +28,13 @@ class SocialService {
   SupabaseClient get _client => Supabase.instance.client;
 
   /// Id da conta logada, ou null se a pessoa está no modo "sem conta".
-  String? get meuId => _client.auth.currentUser?.id;
+  String? get meuId {
+    try {
+      return _client.auth.currentUser?.id;
+    } catch (_) {
+      return null; // Supabase não iniciou (sem internet na abertura)
+    }
+  }
 
   String get _meuIdObrigatorio {
     final id = meuId;
@@ -38,12 +48,15 @@ class SocialService {
   // Um espaço depois da vírgula pode quebrar o select do PostgREST, então a
   // string é escrita sem espaços. `autor:perfis!publicacoes_autor_fkey(...)`
   // usa o nome da chave estrangeira definido em supabase/social_v1.sql.
-  static const _selecaoPublicacao = 'id,autor_id,conteudo,tipo,meta,criado_em,'
-      'autor:perfis!publicacoes_autor_fkey(id,nome,usuario,avatar_cor),'
+  static const _selecaoPublicacao =
+      'id,autor_id,titulo,conteudo,tipo,meta,criado_em,'
+      'autor:perfis!publicacoes_autor_fkey(id,nome,usuario,avatar_cor,avatar_url),'
       'curtidas(count),comentarios(count)';
 
   static const _selecaoComentario = 'id,autor_id,conteudo,criado_em,'
-      'autor:perfis!comentarios_autor_fkey(id,nome,usuario,avatar_cor)';
+      'autor:perfis!comentarios_autor_fkey(id,nome,usuario,avatar_cor,avatar_url)';
+
+  static const _bucketAvatares = 'avatares';
 
   // ------------------------------------------------------------------ perfil
 
@@ -81,6 +94,7 @@ class SocialService {
       'usuario': perfil.usuario,
       'bio': perfil.bio,
       'avatar_cor': perfil.avatarCor,
+      'avatar_url': perfil.avatarUrl,
       'mostrar_pontos': perfil.mostrarPontos,
       'mostrar_sequencia': perfil.mostrarSequencia,
       'mostrar_estatisticas': perfil.mostrarEstatisticas,
@@ -97,6 +111,42 @@ class SocialService {
       },
       onConflict: 'usuario_id',
     );
+  }
+
+  /// Envia a foto de perfil e devolve o endereço público. Cada envio usa um
+  /// nome novo (`<id>/<instante>.<ext>`), então ninguém fica vendo a foto
+  /// antiga em cache. A pasta com o id da conta é o que a política do Storage
+  /// exige para aceitar o arquivo.
+  Future<String> enviarAvatar(Uint8List bytes, String extensao) async {
+    final id = _meuIdObrigatorio;
+    final caminho = '$id/${DateTime.now().millisecondsSinceEpoch}.$extensao';
+    final tipo = extensao == 'png'
+        ? 'image/png'
+        : extensao == 'webp'
+            ? 'image/webp'
+            : 'image/jpeg';
+    await _client.storage.from(_bucketAvatares).uploadBinary(
+          caminho,
+          bytes,
+          fileOptions: FileOptions(contentType: tipo, upsert: false),
+        );
+    return _client.storage.from(_bucketAvatares).getPublicUrl(caminho);
+  }
+
+  /// Apaga uma foto antiga a partir do endereço público. Melhor esforço: se
+  /// falhar, só sobra um arquivo órfão no bucket, sem efeito para ninguém.
+  Future<void> removerAvatarAntigo(String? url) async {
+    if (url == null) return;
+    final marcador = '/$_bucketAvatares/';
+    final posicao = url.indexOf(marcador);
+    if (posicao == -1) return;
+    final caminho =
+        Uri.decodeComponent(url.substring(posicao + marcador.length));
+    // Só apaga dentro da própria pasta (a política do banco também exige).
+    if (!caminho.startsWith('$_meuIdObrigatorio/')) return;
+    try {
+      await _client.storage.from(_bucketAvatares).remove([caminho]);
+    } catch (_) {}
   }
 
   /// Envia os números do app (que moram no SQLite) para a tabela privada.
@@ -193,6 +243,7 @@ class SocialService {
     List<String>? autores,
     String? autorId,
     String? antesDe,
+    String? tituloContem,
     int limite = 20,
   }) async {
     if (autores != null && autores.isEmpty) return [];
@@ -201,6 +252,16 @@ class SocialService {
     if (autores != null) consulta = consulta.inFilter('autor_id', autores);
     if (autorId != null) consulta = consulta.eq('autor_id', autorId);
     if (antesDe != null) consulta = consulta.lt('criado_em', antesDe);
+    if (tituloContem != null && tituloContem.trim().isNotEmpty) {
+      // %, _ e \ são curingas do LIKE: escapados para o texto digitado ser
+      // buscado literalmente.
+      final termo = tituloContem
+          .trim()
+          .replaceAll('\\', '\\\\')
+          .replaceAll('%', '\\%')
+          .replaceAll('_', '\\_');
+      consulta = consulta.ilike('titulo', '%$termo%');
+    }
 
     final linhas =
         await consulta.order('criado_em', ascending: false).limit(limite);
@@ -224,21 +285,56 @@ class SocialService {
     return linhas.map((l) => l['publicacao_id'] as String).toSet();
   }
 
-  Future<void> publicar({
+  /// Cria a publicação e devolve o id (as anotações guardam esse id para
+  /// poder atualizar ou retirar a publicação depois).
+  Future<String> publicar({
+    String? titulo,
     required String conteudo,
     TipoPublicacao tipo = TipoPublicacao.texto,
     Map<String, dynamic> meta = const {},
   }) async {
-    await _client.from('publicacoes').insert({
-      'autor_id': _meuIdObrigatorio,
-      'conteudo': conteudo,
-      'tipo': tipo.valorBanco,
-      'meta': meta,
-    });
+    final linha = await _client
+        .from('publicacoes')
+        .insert({
+          'autor_id': _meuIdObrigatorio,
+          'titulo': titulo,
+          'conteudo': conteudo,
+          'tipo': tipo.valorBanco,
+          'meta': meta,
+        })
+        .select('id')
+        .single();
+    return linha['id'] as String;
+  }
+
+  /// Atualiza título e texto de uma publicação minha (anotação editada).
+  /// Devolve false se ela não existe mais (apagada em outro aparelho).
+  Future<bool> atualizarPublicacao({
+    required String id,
+    required String titulo,
+    required String conteudo,
+  }) async {
+    final linhas = await _client
+        .from('publicacoes')
+        .update({'titulo': titulo, 'conteudo': conteudo})
+        .eq('id', id)
+        .eq('autor_id', _meuIdObrigatorio)
+        .select('id');
+    return linhas.isNotEmpty;
   }
 
   Future<void> excluirPublicacao(String id) async {
     await _client.from('publicacoes').delete().eq('id', id);
+  }
+
+  /// Quantas publicações existem com esse id (0 = já foi apagada).
+  Future<bool> publicacaoExiste(String id) async {
+    final linha = await _client
+        .from('publicacoes')
+        .select('id')
+        .eq('id', id)
+        .maybeSingle();
+    return linha != null;
   }
 
   // ---------------------------------------------------------------- curtidas
@@ -319,7 +415,7 @@ class SocialService {
   Future<List<PerfilResumo>> listarSeguidores(String usuarioId) async {
     final linhas = await _client
         .from('seguidores')
-        .select('pessoa:perfis!seguidores_seguidor_fkey(id,nome,usuario,avatar_cor)')
+        .select('pessoa:perfis!seguidores_seguidor_fkey(id,nome,usuario,avatar_cor,avatar_url)')
         .eq('seguido_id', usuarioId)
         .order('criado_em', ascending: false);
     return _pessoasDe(linhas);
@@ -328,7 +424,7 @@ class SocialService {
   Future<List<PerfilResumo>> listarSeguindo(String usuarioId) async {
     final linhas = await _client
         .from('seguidores')
-        .select('pessoa:perfis!seguidores_seguido_fkey(id,nome,usuario,avatar_cor)')
+        .select('pessoa:perfis!seguidores_seguido_fkey(id,nome,usuario,avatar_cor,avatar_url)')
         .eq('seguidor_id', usuarioId)
         .order('criado_em', ascending: false);
     return _pessoasDe(linhas);
@@ -350,11 +446,56 @@ class SocialService {
     if (limpo.length < 2) return [];
     final linhas = await _client
         .from('perfis')
-        .select('id,nome,usuario,avatar_cor')
+        .select('id,nome,usuario,avatar_cor,avatar_url')
         .or('nome.ilike.%$limpo%,usuario.ilike.%$limpo%')
         .order('nome', ascending: true)
         .limit(30);
     return linhas.map(PerfilResumo.fromMap).toList();
+  }
+
+  /// Pesquisa pelo @usuário (o "@" digitado é ignorado). Usada na barra de
+  /// pesquisa do feed quando o texto começa com "@".
+  Future<List<PerfilResumo>> buscarPessoasPorUsuario(String termo) async {
+    final limpo = termo
+        .replaceAll('@', '')
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9_]'), '');
+    if (limpo.isEmpty) return [];
+    final linhas = await _client
+        .from('perfis')
+        .select('id,nome,usuario,avatar_cor,avatar_url')
+        .ilike('usuario', '%${limpo.replaceAll('_', '\\_')}%')
+        .order('usuario', ascending: true)
+        .limit(30);
+    return linhas.map(PerfilResumo.fromMap).toList();
+  }
+
+  /// O @ está livre (ou já é meu)? A garantia final é o índice único do banco;
+  /// esta consulta só avisa antes de salvar.
+  Future<bool> usuarioDisponivel(String usuario) async {
+    final linha = await _client
+        .from('perfis')
+        .select('id')
+        .eq('usuario', usuario)
+        .neq('id', _meuIdObrigatorio)
+        .maybeSingle();
+    return linha == null;
+  }
+
+  /// Erro por falta de conexão (e não por recusa do servidor). Esses casos não
+  /// são falhas: o que a pessoa fez fica na fila e é reenviado depois.
+  static bool ehErroDeRede(Object erro) {
+    if (erro is SocketException || erro is TimeoutException) return true;
+    if (erro is AuthRetryableFetchException) return true;
+    final texto = erro.toString();
+    return texto.contains('SocketException') ||
+        texto.contains('ClientException') ||
+        texto.contains('Failed host lookup') ||
+        texto.contains('XMLHttpRequest') ||
+        texto.contains('Connection closed') ||
+        texto.contains('Connection reset') ||
+        texto.contains('Connection refused') ||
+        texto.contains('Network is unreachable');
   }
 
   // ------------------------------------------------------------------- erros

@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:flutter/foundation.dart';
 
 import '../models/item.dart';
@@ -7,7 +10,26 @@ import 'app_state.dart';
 import 'database_helper.dart';
 import 'social_service.dart';
 
-enum AbaFeed { seguindo, descobrir }
+/// Resultado de uma rodada da fila de saída.
+class ResultadoFila {
+  /// Algo foi enviado nesta rodada.
+  final bool enviouAlgo;
+
+  /// A rodada parou por falta de internet (o resto continua na fila).
+  final bool semInternet;
+
+  /// Erro que NÃO é de conexão (ex.: servidor recusou). Mostrar para a pessoa.
+  final String? erro;
+
+  const ResultadoFila({
+    this.enviouAlgo = false,
+    this.semInternet = false,
+    this.erro,
+  });
+}
+
+/// `busca` não é uma aba na tela: guarda o resultado da pesquisa por título.
+enum AbaFeed { seguindo, descobrir, busca }
 
 class _ListaDoFeed {
   List<Publicacao> itens = [];
@@ -31,7 +53,19 @@ class SocialState extends ChangeNotifier {
   final Map<AbaFeed, _ListaDoFeed> _feeds = {
     AbaFeed.seguindo: _ListaDoFeed(),
     AbaFeed.descobrir: _ListaDoFeed(),
+    AbaFeed.busca: _ListaDoFeed(),
   };
+
+  /// Termo da pesquisa atual e um contador para descartar respostas de
+  /// pesquisas antigas (quem digita rápido dispara várias seguidas).
+  String termoBusca = '';
+  int _sequenciaBusca = 0;
+
+  /// Pessoas encontradas quando a pesquisa começa com "@".
+  List<PerfilResumo> pessoasBusca = [];
+  bool get buscandoPessoas => termoBusca.startsWith('@');
+
+  bool _processandoFila = false;
 
   /// Conta para a qual os dados em memória foram carregados. Se a conta mudar
   /// (sair e entrar com outra), tudo é descartado em vez de misturar contas.
@@ -74,6 +108,8 @@ class SocialState extends ChangeNotifier {
         ..erro = null;
     }
     meuPerfil = null;
+    termoBusca = '';
+    pessoasBusca = [];
     projetosPublicados = {};
     totalAnotacoes = null;
     totalTarefasConcluidas = null;
@@ -91,12 +127,27 @@ class SocialState extends ChangeNotifier {
     final lista = _feeds[aba]!;
     if (lista.carregando) return;
     if (maisAntigas && !lista.temMais) return;
+    if (aba == AbaFeed.busca && termoBusca.isEmpty) return;
 
+    final sequencia = _sequenciaBusca;
+    final buscaDePessoas = aba == AbaFeed.busca && buscandoPessoas;
     lista.carregando = true;
     lista.erro = null;
     notifyListeners();
 
     try {
+      if (buscaDePessoas) {
+        // "@maria": procura pessoas pelo @usuário em vez de publicações.
+        final pessoas = await _servico.buscarPessoasPorUsuario(termoBusca);
+        if (sequencia != _sequenciaBusca) return;
+        pessoasBusca = pessoas;
+        lista.itens = [];
+        lista.temMais = false;
+        lista.jaCarregou = true;
+        lista.carregando = false;
+        notifyListeners();
+        return;
+      }
       List<String>? autores;
       if (aba == AbaFeed.seguindo) {
         // Inclui a própria pessoa para ela ver o que publicou.
@@ -108,12 +159,16 @@ class SocialState extends ChangeNotifier {
       final novas = await _servico.listarPublicacoes(
         autores: autores,
         antesDe: antesDe,
+        tituloContem: aba == AbaFeed.busca ? termoBusca : null,
         limite: _tamanhoPagina,
       );
+      // Uma pesquisa mais nova assumiu: este resultado já não vale.
+      if (aba == AbaFeed.busca && sequencia != _sequenciaBusca) return;
       lista.itens = maisAntigas ? [...lista.itens, ...novas] : novas;
       lista.temMais = novas.length == _tamanhoPagina;
       lista.jaCarregou = true;
     } catch (e) {
+      if (aba == AbaFeed.busca && sequencia != _sequenciaBusca) return;
       lista.erro = SocialService.traduzirErro(e);
     }
 
@@ -121,16 +176,175 @@ class SocialState extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> publicar({
+  /// Pesquisa publicações pelo título. Termo vazio limpa o resultado.
+  Future<void> buscarPublicacoes(String termo) async {
+    _verificarUsuario();
+    _sequenciaBusca++;
+    termoBusca = termo.trim();
+    pessoasBusca = [];
+    _feeds[AbaFeed.busca]!
+      ..itens = []
+      ..carregando = false
+      ..jaCarregou = false
+      ..temMais = true
+      ..erro = null;
+    if (termoBusca.isEmpty) {
+      notifyListeners();
+      return;
+    }
+    await carregarFeed(AbaFeed.busca);
+  }
+
+  void limparBusca() {
+    _sequenciaBusca++;
+    termoBusca = '';
+    pessoasBusca = [];
+    _feeds[AbaFeed.busca]!
+      ..itens = []
+      ..carregando = false
+      ..jaCarregou = false
+      ..temMais = true
+      ..erro = null;
+    notifyListeners();
+  }
+
+  Future<void> _recarregarFeeds() => Future.wait([
+        carregarFeed(AbaFeed.descobrir),
+        carregarFeed(AbaFeed.seguindo),
+      ]);
+
+  /// Compartilhamento de atividade (conquista, projeto, sequência, evolução).
+  /// Devolve true se já foi para a nuvem e false se ficou na fila (sem
+  /// internet): nesse caso é enviada sozinha quando a conexão voltar.
+  Future<bool> publicar({
+    String? titulo,
     required String conteudo,
     TipoPublicacao tipo = TipoPublicacao.texto,
     Map<String, dynamic> meta = const {},
   }) async {
-    await _servico.publicar(conteudo: conteudo, tipo: tipo, meta: meta);
-    await Future.wait([
-      carregarFeed(AbaFeed.descobrir),
-      carregarFeed(AbaFeed.seguindo),
-    ]);
+    try {
+      await _servico.publicar(
+          titulo: titulo, conteudo: conteudo, tipo: tipo, meta: meta);
+    } catch (e) {
+      if (!SocialService.ehErroDeRede(e)) rethrow;
+      await DatabaseHelper.instance.adicionarPublicacaoPendente(
+        contaId: meuId,
+        titulo: titulo,
+        conteudo: conteudo,
+        tipo: tipo.valorBanco,
+        metaJson: jsonEncode(meta),
+      );
+      return false;
+    }
+    await _recarregarFeeds();
+    return true;
+  }
+
+  // ------------------------------------------------- fila de saída (offline)
+
+  /// Envia para a nuvem tudo o que ficou esperando: anotações publicadas,
+  /// editadas ou retiradas, atividades compartilhadas e remoções. Seguro de
+  /// chamar a qualquer momento (não faz nada sem conta ou sem pendências).
+  Future<ResultadoFila> processarFila() async {
+    _verificarUsuario();
+    final conta = meuId;
+    if (conta == null || _processandoFila) return const ResultadoFila();
+    _processandoFila = true;
+
+    final banco = DatabaseHelper.instance;
+    var enviou = false;
+    try {
+      // 1) Anotações apagadas que estavam publicadas.
+      for (final id in await banco.listarRemocoesPendentes(conta)) {
+        await _servico.excluirPublicacao(id);
+        await banco.removerRemocaoPendente(id);
+        _removerDasListas(id);
+        enviou = true;
+      }
+
+      // 2) Atividades compartilhadas sem internet.
+      for (final linha in await banco.listarPublicacoesPendentes(conta)) {
+        await _servico.publicar(
+          titulo: linha['titulo'] as String?,
+          conteudo: linha['conteudo'] as String,
+          tipo: TipoPublicacao.deBanco(linha['tipo'] as String),
+          meta: Map<String, dynamic>.from(
+              jsonDecode(linha['meta'] as String) as Map),
+        );
+        await banco.removerPublicacaoPendente(linha['id'] as int);
+        enviou = true;
+      }
+
+      // 3) Anotações: publicar, atualizar o texto ou retirar do feed.
+      for (final item in await banco.listarAnotacoesPendentes()) {
+        if (item.querPublicada) {
+          if (item.publicacaoId == null) {
+            final id = await _servico.publicar(
+              titulo: item.titulo,
+              conteudo: item.conteudo,
+              tipo: TipoPublicacao.texto,
+            );
+            await banco.definirEnvioDoItem(item.id!,
+                publicacaoId: id, pendente: false);
+          } else {
+            final existe = await _servico.atualizarPublicacao(
+              id: item.publicacaoId!,
+              titulo: item.titulo,
+              conteudo: item.conteudo,
+            );
+            if (existe) {
+              await banco.definirEnvioDoItem(item.id!,
+                  publicacaoId: item.publicacaoId, pendente: false);
+            } else {
+              // Apagada pelo feed ou em outro aparelho: volta a ser privada.
+              await banco.tornarAnotacaoPrivada(item.id!);
+            }
+          }
+        } else {
+          await _servico.excluirPublicacao(item.publicacaoId!);
+          await banco.definirEnvioDoItem(item.id!,
+              publicacaoId: null, pendente: false);
+          _removerDasListas(item.publicacaoId!);
+        }
+        enviou = true;
+      }
+    } catch (e) {
+      _processandoFila = false;
+      if (enviou) {
+        _recarregarFeeds();
+        notifyListeners();
+      }
+      if (SocialService.ehErroDeRede(e)) {
+        return ResultadoFila(enviouAlgo: enviou, semInternet: true);
+      }
+      return ResultadoFila(
+          enviouAlgo: enviou, erro: SocialService.traduzirErro(e));
+    }
+
+    _processandoFila = false;
+    if (enviou) {
+      _recarregarFeeds();
+      notifyListeners();
+    }
+    return ResultadoFila(enviouAlgo: enviou);
+  }
+
+  /// Apaga a anotação do aparelho. Se estava publicada, a publicação é
+  /// retirada da nuvem agora ou assim que houver internet.
+  Future<void> excluirAnotacao(Item anotacao, AppState app) async {
+    final publicacaoId = anotacao.publicacaoId;
+    if (publicacaoId != null) {
+      await DatabaseHelper.instance
+          .adicionarRemocaoPendente(publicacaoId, meuId);
+    }
+    await app.excluirItem(anotacao);
+    if (publicacaoId != null) await processarFila();
+  }
+
+  void _removerDasListas(String id) {
+    for (final lista in _feeds.values) {
+      lista.itens = lista.itens.where((p) => p.id != id).toList();
+    }
   }
 
   /// Curtida otimista: a tela muda na hora e volta atrás se o servidor recusar.
@@ -158,9 +372,11 @@ class SocialState extends ChangeNotifier {
 
   Future<void> excluirPublicacao(String id) async {
     await _servico.excluirPublicacao(id);
-    for (final lista in _feeds.values) {
-      lista.itens = lista.itens.where((p) => p.id != id).toList();
-    }
+    _removerDasListas(id);
+    // Se era uma anotação, ela volta a ser privada no aparelho.
+    try {
+      await DatabaseHelper.instance.marcarAnotacaoPrivada(id);
+    } catch (_) {}
     notifyListeners();
   }
 
@@ -270,12 +486,29 @@ class SocialState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// [novaFoto]/[extensaoFoto] enviam uma foto nova; [removerFoto] tira a
+  /// atual. Sem nenhum dos dois, a foto que já estava em [perfil] é mantida.
   Future<void> salvarMeuPerfil({
     required PerfilEditavel perfil,
     required Set<int> projetosEscolhidos,
     required AppState app,
+    Uint8List? novaFoto,
+    String extensaoFoto = 'jpg',
+    bool removerFoto = false,
   }) async {
+    final fotoAnterior = perfil.avatarUrl;
+    if (novaFoto != null) {
+      final url = await _servico.enviarAvatar(novaFoto, extensaoFoto);
+      perfil = perfil.comAvatarUrl(url);
+    } else if (removerFoto) {
+      perfil = perfil.comAvatarUrl(null);
+    }
+
     await _servico.salvarMeuPerfil(perfil);
+    // Só depois de gravar o perfil com a foto nova é seguro apagar a antiga.
+    if (novaFoto != null || removerFoto) {
+      await _servico.removerAvatarAntigo(fotoAnterior);
+    }
 
     final retirados = projetosPublicados.difference(projetosEscolhidos);
     await _servico.removerProjetosPublicos(retirados);

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -8,10 +10,10 @@ import '../models/publicacao.dart';
 import '../theme/app_cores.dart';
 import '../utils/mensagens.dart';
 import '../widgets/aviso_precisa_conta.dart';
+import '../widgets/avatar_usuario.dart';
 import '../widgets/cabecalho_da_aba.dart';
 import '../widgets/cartao_publicacao.dart';
 import 'criar_publicacao_screen.dart';
-import 'lista_pessoas_screen.dart';
 import 'perfil_publico_screen.dart';
 import 'publicacao_detalhe_screen.dart';
 
@@ -27,6 +29,11 @@ class FeedScreen extends StatefulWidget {
 class _FeedScreenState extends State<FeedScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _abas = TabController(length: 2, vsync: this);
+
+  // Pesquisa de publicações por título: troca as abas por um campo + resultados.
+  final _buscaController = TextEditingController();
+  Timer? _espera;
+  bool _buscando = false;
 
   @override
   void initState() {
@@ -44,6 +51,8 @@ class _FeedScreenState extends State<FeedScreen>
 
   @override
   void dispose() {
+    _espera?.cancel();
+    _buscaController.dispose();
     _abas.dispose();
     super.dispose();
   }
@@ -54,12 +63,21 @@ class _FeedScreenState extends State<FeedScreen>
     );
   }
 
-  void _buscarPessoas() {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => const ListaPessoasScreen(modo: ModoLista.busca),
-      ),
-    );
+  void _abrirBusca() => setState(() => _buscando = true);
+
+  void _fecharBusca() {
+    _espera?.cancel();
+    _buscaController.clear();
+    context.read<SocialState>().limparBusca();
+    setState(() => _buscando = false);
+  }
+
+  /// Espera a pessoa parar de digitar um instante antes de consultar a internet.
+  void _aoDigitar(String texto) {
+    _espera?.cancel();
+    _espera = Timer(const Duration(milliseconds: 450), () {
+      if (mounted) context.read<SocialState>().buscarPublicacoes(texto);
+    });
   }
 
   @override
@@ -71,21 +89,66 @@ class _FeedScreenState extends State<FeedScreen>
       body: SafeArea(
         child: Column(
           children: [
-            CabecalhoDaAba(
-              titulo: 'Feed',
-              subtitulo: 'O que a turma está estudando',
-              aoTocarConfiguracoes: widget.aoTocarConfiguracoes,
-              acoes: [
-                if (logado)
-                  IconButton(
-                    tooltip: 'Buscar pessoas',
-                    icon: const Icon(Icons.person_search_outlined),
-                    onPressed: _buscarPessoas,
-                  ),
-              ],
-            ),
+            if (logado && _buscando)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(8, 12, 16, 8),
+                child: Row(
+                  children: [
+                    IconButton(
+                      tooltip: 'Fechar pesquisa',
+                      icon: const Icon(Icons.arrow_back),
+                      onPressed: _fecharBusca,
+                    ),
+                    Expanded(
+                      child: TextField(
+                        controller: _buscaController,
+                        autofocus: true,
+                        textInputAction: TextInputAction.search,
+                        onChanged: (t) {
+                          setState(() {}); // atualiza o botão de limpar
+                          _aoDigitar(t);
+                        },
+                        onSubmitted: (t) =>
+                            context.read<SocialState>().buscarPublicacoes(t),
+                        decoration: InputDecoration(
+                          hintText: 'Título da publicação ou @usuário',
+                          isDense: true,
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                          suffixIcon: _buscaController.text.isEmpty
+                              ? null
+                              : IconButton(
+                                  icon: const Icon(Icons.close),
+                                  onPressed: () {
+                                    _buscaController.clear();
+                                    _aoDigitar('');
+                                    setState(() {});
+                                  },
+                                ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else
+              CabecalhoDaAba(
+                titulo: 'Feed',
+                subtitulo: 'O que a turma está estudando',
+                aoTocarConfiguracoes: widget.aoTocarConfiguracoes,
+                acoes: [
+                  if (logado)
+                    IconButton(
+                      tooltip: 'Pesquisar publicações',
+                      icon: const Icon(Icons.search),
+                      onPressed: _abrirBusca,
+                    ),
+                ],
+              ),
             if (!logado)
               const Expanded(child: AvisoPrecisaConta())
+            else if (_buscando)
+              const Expanded(child: _ListaDoFeed(aba: AbaFeed.busca))
             else ...[
               TabBar(
                 controller: _abas,
@@ -187,6 +250,40 @@ class _ListaDoFeed extends StatelessWidget {
           );
         }
 
+        // Pesquisa começando com "@": mostra pessoas em vez de publicações.
+        if (aba == AbaFeed.busca && social.buscandoPessoas) {
+          if (social.pessoasBusca.isEmpty) {
+            return _Mensagem(
+              icone: Icons.person_search_outlined,
+              texto: social.termoBusca.replaceAll('@', '').isEmpty
+                  ? 'Digite o @ de quem você procura.'
+                  : 'Ninguém encontrado com "${social.termoBusca}".',
+            );
+          }
+          return ListView.separated(
+            itemCount: social.pessoasBusca.length,
+            separatorBuilder: (_, __) => const Divider(height: 1),
+            itemBuilder: (context, indice) {
+              final pessoa = social.pessoasBusca[indice];
+              return ListTile(
+                leading: AvatarUsuario(
+                  nome: pessoa.nome,
+                  cor: pessoa.avatarCor,
+                  imagemUrl: pessoa.avatarUrl,
+                ),
+                title: Text(pessoa.nome),
+                subtitle:
+                    pessoa.usuario != null ? Text('@${pessoa.usuario}') : null,
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => PerfilPublicoScreen(usuarioId: pessoa.id),
+                  ),
+                ),
+              );
+            },
+          );
+        }
+
         return RefreshIndicator(
           onRefresh: () => social.carregarFeed(aba),
           child: itens.isEmpty
@@ -195,7 +292,7 @@ class _ListaDoFeed extends StatelessWidget {
                   children: [
                     SizedBox(
                       height: 360,
-                      child: _vazio(),
+                      child: _vazio(context),
                     ),
                   ],
                 )
@@ -216,6 +313,7 @@ class _ListaDoFeed extends StatelessWidget {
                     final ehMinha = p.autor.id == social.meuId;
                     return CartaoPublicacao(
                       publicacao: p,
+                      resumido: true,
                       aoCurtir: () => _curtir(context, social, p),
                       aoAbrir: () => Navigator.of(context).push(
                         MaterialPageRoute(
@@ -239,7 +337,17 @@ class _ListaDoFeed extends StatelessWidget {
     );
   }
 
-  Widget _vazio() {
+  Widget _vazio(BuildContext context) {
+    if (aba == AbaFeed.busca) {
+      final termo = context.read<SocialState>().termoBusca;
+      return _Mensagem(
+        icone: Icons.search,
+        texto: termo.isEmpty
+            ? 'Digite parte do título para encontrar anotações e outras '
+                'publicações da comunidade.'
+            : 'Nenhuma publicação com "$termo" no título.',
+      );
+    }
     if (aba == AbaFeed.seguindo) {
       return _Mensagem(
         icone: Icons.people_outline,

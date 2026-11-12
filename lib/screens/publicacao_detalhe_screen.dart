@@ -281,6 +281,7 @@ class _LinhaComentario extends StatelessWidget {
           AvatarUsuario(
             nome: comentario.autor.nome,
             cor: comentario.autor.avatarCor,
+            imagemUrl: comentario.autor.avatarUrl,
             raio: 15,
             aoTocar: aoAbrirPerfil,
           ),

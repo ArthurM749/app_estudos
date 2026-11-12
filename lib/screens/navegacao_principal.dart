@@ -1,4 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../data/auth_service.dart';
+import '../data/social_state.dart';
 
 import 'anotacoes_screen.dart';
 import 'configuracoes_screen.dart';
@@ -22,7 +28,8 @@ class NavegacaoPrincipal extends StatefulWidget {
   State<NavegacaoPrincipal> createState() => _NavegacaoPrincipalState();
 }
 
-class _NavegacaoPrincipalState extends State<NavegacaoPrincipal> {
+class _NavegacaoPrincipalState extends State<NavegacaoPrincipal>
+    with WidgetsBindingObserver {
   int _abaAtual = _abaInicio;
 
   // O feed só é montado na primeira visita. O IndexedStack constrói todas as
@@ -35,6 +42,45 @@ class _NavegacaoPrincipalState extends State<NavegacaoPrincipal> {
   // para mostrar números atuais em vez de ficar com os da visita anterior.
   bool _perfilJaAberto = false;
   int _versaoPerfil = 0;
+
+  Timer? _relogioDaFila;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    // Busca a cor/foto do perfil para o avatar da Home. Uma consulta leve e
+    // silenciosa: sem internet o avatar mostra só a inicial.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || AuthService.instance.usuarioAtual == null) return;
+      context.read<SocialState>().carregarMeuPerfil().catchError((_) {});
+      _enviarPendencias();
+    });
+    // Offline primeiro: o que foi publicado/editado sem internet é reenviado
+    // sozinho. A consulta de pendências é local e barata; só vai à rede se
+    // houver algo na fila.
+    _relogioDaFila =
+        Timer.periodic(const Duration(seconds: 45), (_) => _enviarPendencias());
+  }
+
+  @override
+  void dispose() {
+    _relogioDaFila?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState estado) {
+    if (estado == AppLifecycleState.resumed) _enviarPendencias();
+  }
+
+  void _enviarPendencias() {
+    if (!mounted || AuthService.instance.usuarioAtual == null) return;
+    context.read<SocialState>().processarFila().catchError((_) {
+      return const ResultadoFila();
+    });
+  }
 
   void _irPara(int aba) {
     setState(() {

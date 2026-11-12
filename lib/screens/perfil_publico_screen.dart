@@ -228,6 +228,7 @@ class _PerfilPublicoScreenState extends State<PerfilPublicoScreen> {
               AvatarUsuario(
                 nome: perfil.resumo.nome,
                 cor: perfil.resumo.avatarCor,
+                imagemUrl: perfil.resumo.avatarUrl,
                 raio: 40,
               ),
               const SizedBox(height: 12),
@@ -327,7 +328,7 @@ class _PerfilPublicoScreenState extends State<PerfilPublicoScreen> {
           privado: meu != null && !meu.mostrarProjetos,
         ),
         const SizedBox(height: 24),
-        const _TituloComCadeado('Publicações recentes'),
+        const _TituloComCadeado('Publicações'),
         const SizedBox(height: 12),
         if (_publicacoes.isEmpty)
           Text(
@@ -338,6 +339,7 @@ class _PerfilPublicoScreenState extends State<PerfilPublicoScreen> {
           for (final p in _publicacoes)
             CartaoPublicacao(
               publicacao: p,
+              resumido: true,
               aoCurtir: () => _curtir(p),
               aoAbrir: () => Navigator.of(context).push(
                 MaterialPageRoute(

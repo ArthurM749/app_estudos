@@ -4,8 +4,10 @@ import 'package:provider/provider.dart';
 import '../data/app_state.dart';
 import '../data/database_helper.dart';
 import '../data/regras_pontos.dart';
+import '../data/social_state.dart';
 import '../models/item.dart';
 import '../utils/formatadores.dart';
+import '../widgets/avatar_usuario.dart';
 import '../widgets/cabecalho_da_aba.dart';
 import '../widgets/dialogo_projeto.dart';
 import '../widgets/erro_de_carregamento.dart';
@@ -38,7 +40,8 @@ class HomeScreen extends StatelessWidget {
             }
 
             final nome = appState.nomeUsuario ?? 'Estudante';
-            final inicial = nome.isNotEmpty ? nome[0].toUpperCase() : '?';
+            // Mesma cor e foto do perfil público: o avatar é um só no app todo.
+            final meuPerfil = context.watch<SocialState>().meuPerfil;
             final pontosDentroDoNivel =
                 RegrasDePontos.pontosDentroDoNivelAtual(appState.pontosTotais);
             final pontosParaProximo =
@@ -52,12 +55,11 @@ class HomeScreen extends StatelessWidget {
                 CabecalhoDaAba(
                   titulo: 'Olá, $nome!',
                   subtitulo: formatarDataCompleta(hoje),
-                  leading: CircleAvatar(
-                    radius: 22,
-                    child: Text(
-                      inicial,
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
+                  leading: AvatarUsuario(
+                    nome: nome,
+                    cor: meuPerfil?.avatarCor,
+                    imagemUrl: meuPerfil?.avatarUrl,
+                    raio: 22,
                   ),
                   aoTocarConfiguracoes: aoTocarConfiguracoes,
                 ),
