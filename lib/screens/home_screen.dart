@@ -9,7 +9,6 @@ import '../models/item.dart';
 import '../utils/formatadores.dart';
 import '../widgets/avatar_usuario.dart';
 import '../widgets/cabecalho_da_aba.dart';
-import '../widgets/dialogo_projeto.dart';
 import '../widgets/erro_de_carregamento.dart';
 import '../widgets/grafico_pontos_semana.dart';
 import 'anotacao_editor_screen.dart';
@@ -40,7 +39,6 @@ class HomeScreen extends StatelessWidget {
             }
 
             final nome = appState.nomeUsuario ?? 'Estudante';
-            // Mesma cor e foto do perfil público: o avatar é um só no app todo.
             final meuPerfil = context.watch<SocialState>().meuPerfil;
             final pontosDentroDoNivel =
                 RegrasDePontos.pontosDentroDoNivelAtual(appState.pontosTotais);
@@ -133,31 +131,6 @@ class HomeScreen extends StatelessWidget {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed: () => Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => const AnotacaoEditorScreen(),
-                                ),
-                              ),
-                              icon: const Icon(Icons.note_add_outlined),
-                              label: const Text('Nova anotação'),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: FilledButton.icon(
-                              onPressed: () => abrirDialogoProjeto(context),
-                              icon:
-                                  const Icon(Icons.create_new_folder_outlined),
-                              label: const Text('Novo projeto'),
-                            ),
-                          ),
-                        ],
-                      ),
                       const SizedBox(height: 24),
                       _SecaoComVerTudo(
                         titulo: 'Projetos em andamento',
@@ -168,7 +141,7 @@ class HomeScreen extends StatelessWidget {
                       if (appState.projetos.isEmpty)
                         const _CartaoVazio(
                           mensagem:
-                              'Nenhum projeto ainda. Crie o primeiro acima.',
+                              'Nenhum projeto ainda. Use o botão + para criar o primeiro.',
                         )
                       else
                         ...appState.projetos.take(3).map((projeto) {
@@ -215,7 +188,7 @@ class HomeScreen extends StatelessWidget {
                           if (recentes.isEmpty) {
                             return const _CartaoVazio(
                               mensagem:
-                                  'Nenhuma anotação ainda. Toque em "Nova anotação" para começar.',
+                                  'Nenhuma anotação ainda. Use o botão + para criar a primeira.',
                             );
                           }
                           return Column(
