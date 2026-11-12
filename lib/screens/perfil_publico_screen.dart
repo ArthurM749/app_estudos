@@ -68,8 +68,6 @@ class _PerfilPublicoScreenState extends State<PerfilPublicoScreen> {
     final servico = SocialService.instance;
     try {
       if (_ehMeu) {
-        // Envia os números atuais antes de ler, para o que os outros veem não
-        // ficar defasado. A própria sincronização limita a frequência (2 min).
         final social = context.read<SocialState>();
         await social.sincronizar(context.read<AppState>());
         await social.carregarMeuPerfil();
@@ -116,7 +114,6 @@ class _PerfilPublicoScreenState extends State<PerfilPublicoScreen> {
       } else {
         await servico.deixarDeSeguir(perfil.id);
       }
-      // A aba "Seguindo" do feed passa a refletir a mudança.
       social.carregarFeed(AbaFeed.seguindo);
     } catch (e) {
       if (!mounted) return;
@@ -199,9 +196,6 @@ class _PerfilPublicoScreenState extends State<PerfilPublicoScreen> {
     final social = context.watch<SocialState>();
     final app = context.watch<AppState>();
 
-    // No próprio perfil, os números vêm do aparelho (sempre atuais) e o que
-    // está desligado aparece com cadeado. Nos perfis dos outros, só o que o
-    // banco devolveu.
     final meu = _ehMeu ? social.meuPerfil : null;
     final sobrepor = meu != null;
     final pontos = sobrepor ? app.pontosTotais : perfil.pontosTotais;
@@ -469,8 +463,9 @@ class _PerfilPublicoScreenState extends State<PerfilPublicoScreen> {
         runSpacing: 8,
         children: [
           for (final c in conquistas)
-            Tooltip(
-              message: c.descricao,
+            Semantics(
+              label: c.descricao,
+              container: true,
               child: Container(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -533,7 +528,6 @@ class _PerfilPublicoScreenState extends State<PerfilPublicoScreen> {
   }
 }
 
-/// Título de seção; com [privado] mostra um cadeado "só você vê" ao lado.
 class _TituloComCadeado extends StatelessWidget {
   final String texto;
   final bool privado;

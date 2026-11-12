@@ -5,21 +5,19 @@ import 'package:provider/provider.dart';
 
 import '../data/auth_service.dart';
 import '../data/social_state.dart';
+import '../widgets/dialogo_projeto.dart';
 
-import 'anotacoes_screen.dart';
+import 'anotacao_editor_screen.dart';
 import 'configuracoes_screen.dart';
+import 'estudos_screen.dart';
 import 'feed_screen.dart';
 import 'home_screen.dart';
 import 'perfil_screen.dart';
-import 'projetos_screen.dart';
 
-// Ordem das abas. Os atalhos das outras telas (ex.: "ver projetos" no Início)
-// passam por aqui, então mudar a ordem é só mexer nestes números.
 const _abaInicio = 0;
 const _abaFeed = 1;
-const _abaProjetos = 2;
-const _abaAnotacoes = 3;
-const _abaPerfil = 4;
+const _abaEstudos = 2;
+const _abaPerfil = 3;
 
 class NavegacaoPrincipal extends StatefulWidget {
   const NavegacaoPrincipal({super.key});
@@ -31,17 +29,12 @@ class NavegacaoPrincipal extends StatefulWidget {
 class _NavegacaoPrincipalState extends State<NavegacaoPrincipal>
     with WidgetsBindingObserver {
   int _abaAtual = _abaInicio;
+  int _abaEstudosInicial = 0;
 
-  // O feed só é montado na primeira visita. O IndexedStack constrói todas as
-  // abas de uma vez, e sem isso o app faria chamadas de internet logo ao abrir
-  // — mesmo para quem só quer estudar offline.
+  // Mantém a estratégia original: o feed só é construído quando é aberto.
+  // Assim, a tela existente continua responsável por buscar as publicações.
   bool _feedJaAberto = false;
-
-  // Mesma ideia para o Perfil (carrega perfil público da internet). A "versão"
-  // muda a cada vez que a pessoa entra na aba vinda de outra, recriando a tela
-  // para mostrar números atuais em vez de ficar com os da visita anterior.
   bool _perfilJaAberto = false;
-  int _versaoPerfil = 0;
 
   Timer? _relogioDaFila;
 
@@ -49,16 +42,14 @@ class _NavegacaoPrincipalState extends State<NavegacaoPrincipal>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    // Busca a cor/foto do perfil para o avatar da Home. Uma consulta leve e
-    // silenciosa: sem internet o avatar mostra só a inicial.
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || AuthService.instance.usuarioAtual == null) return;
       context.read<SocialState>().carregarMeuPerfil().catchError((_) {});
       _enviarPendencias();
     });
-    // Offline primeiro: o que foi publicado/editado sem internet é reenviado
-    // sozinho. A consulta de pendências é local e barata; só vai à rede se
-    // houver algo na fila.
+
+    // Preserva o reenvio automático das ações feitas offline.
     _relogioDaFila =
         Timer.periodic(const Duration(seconds: 45), (_) => _enviarPendencias());
   }
@@ -84,17 +75,58 @@ class _NavegacaoPrincipalState extends State<NavegacaoPrincipal>
 
   void _irPara(int aba) {
     setState(() {
-      if (aba == _abaPerfil && _abaAtual != _abaPerfil) _versaoPerfil++;
       _abaAtual = aba;
       if (aba == _abaFeed) _feedJaAberto = true;
       if (aba == _abaPerfil) _perfilJaAberto = true;
     });
   }
 
-  // Configurações é uma tela própria (empilhada), aberta pela engrenagem.
+  void _abrirEstudos(int aba) {
+    setState(() {
+      _abaEstudosInicial = aba;
+      _abaAtual = _abaEstudos;
+    });
+  }
+
   void _abrirConfiguracoes() {
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => const ConfiguracoesScreen()),
+    );
+  }
+
+  void _abrirCriacao() {
+    showModalBottomSheet<void>(
+      context: context,
+      useSafeArea: true,
+      showDragHandle: true,
+      builder: (contextModal) => Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.create_new_folder_outlined),
+              title: const Text('Criar projeto'),
+              onTap: () {
+                Navigator.of(contextModal).pop();
+                abrirDialogoProjeto(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.note_add_outlined),
+              title: const Text('Criar anotação'),
+              onTap: () {
+                Navigator.of(contextModal).pop();
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const AnotacaoEditorScreen(),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -102,18 +134,20 @@ class _NavegacaoPrincipalState extends State<NavegacaoPrincipal>
   Widget build(BuildContext context) {
     final telas = [
       HomeScreen(
-        aoTocarProjetos: () => _irPara(_abaProjetos),
-        aoTocarAnotacoes: () => _irPara(_abaAnotacoes),
+        aoTocarProjetos: () => _abrirEstudos(0),
+        aoTocarAnotacoes: () => _abrirEstudos(1),
         aoTocarConfiguracoes: _abrirConfiguracoes,
       ),
       _feedJaAberto
           ? FeedScreen(aoTocarConfiguracoes: _abrirConfiguracoes)
           : const SizedBox.shrink(),
-      ProjetosScreen(aoTocarConfiguracoes: _abrirConfiguracoes),
-      AnotacoesScreen(aoTocarConfiguracoes: _abrirConfiguracoes),
+      EstudosScreen(
+        key: ValueKey(_abaEstudosInicial),
+        abaInicial: _abaEstudosInicial,
+        aoTocarConfiguracoes: _abrirConfiguracoes,
+      ),
       _perfilJaAberto
           ? PerfilScreen(
-              key: ValueKey(_versaoPerfil),
               aoTocarConfiguracoes: _abrirConfiguracoes,
             )
           : const SizedBox.shrink(),
@@ -121,36 +155,106 @@ class _NavegacaoPrincipalState extends State<NavegacaoPrincipal>
 
     return Scaffold(
       body: IndexedStack(index: _abaAtual, children: telas),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _abaAtual,
-        onDestinationSelected: _irPara,
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home),
-            label: 'Início',
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      floatingActionButton: Transform.translate(
+        // Desce mais 4 px em relação ao ajuste anterior (12 px).
+        offset: const Offset(0, 16),
+        child: FloatingActionButton(
+          onPressed: _abrirCriacao,
+          tooltip: 'Criar projeto ou anotação',
+          child: const Icon(Icons.add, size: 28),
+        ),
+      ),
+      bottomNavigationBar: BottomAppBar(
+        shape: const CircularNotchedRectangle(),
+        notchMargin: 8,
+        child: SizedBox(
+          height: 62,
+          child: Row(
+            children: [
+              _ItemNavegacao(
+                icone: Icons.home_outlined,
+                iconeSelecionado: Icons.home,
+                titulo: 'Início',
+                selecionado: _abaAtual == _abaInicio,
+                aoTocar: () => _irPara(_abaInicio),
+              ),
+              _ItemNavegacao(
+                icone: Icons.dynamic_feed_outlined,
+                iconeSelecionado: Icons.dynamic_feed,
+                titulo: 'Feed',
+                selecionado: _abaAtual == _abaFeed,
+                aoTocar: () => _irPara(_abaFeed),
+              ),
+              const SizedBox(width: 64),
+              _ItemNavegacao(
+                icone: Icons.menu_book_outlined,
+                iconeSelecionado: Icons.menu_book,
+                titulo: 'Estudos',
+                selecionado: _abaAtual == _abaEstudos,
+                aoTocar: () => _irPara(_abaEstudos),
+              ),
+              _ItemNavegacao(
+                icone: Icons.person_outline,
+                iconeSelecionado: Icons.person,
+                titulo: 'Perfil',
+                selecionado: _abaAtual == _abaPerfil,
+                aoTocar: () => _irPara(_abaPerfil),
+              ),
+            ],
           ),
-          NavigationDestination(
-            icon: Icon(Icons.dynamic_feed_outlined),
-            selectedIcon: Icon(Icons.dynamic_feed),
-            label: 'Feed',
+        ),
+      ),
+    );
+  }
+}
+
+class _ItemNavegacao extends StatelessWidget {
+  final IconData icone;
+  final IconData iconeSelecionado;
+  final String titulo;
+  final bool selecionado;
+  final VoidCallback aoTocar;
+
+  const _ItemNavegacao({
+    required this.icone,
+    required this.iconeSelecionado,
+    required this.titulo,
+    required this.selecionado,
+    required this.aoTocar,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cores = Theme.of(context).colorScheme;
+    final cor = selecionado ? cores.primary : cores.onSurfaceVariant;
+
+    return Expanded(
+      child: InkWell(
+        onTap: aoTocar,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 5),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                selecionado ? iconeSelecionado : icone,
+                color: cor,
+                size: 22,
+              ),
+              const SizedBox(height: 2),
+              Text(
+                titulo,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: cor,
+                      fontWeight:
+                          selecionado ? FontWeight.w700 : FontWeight.w500,
+                    ),
+              ),
+            ],
           ),
-          NavigationDestination(
-            icon: Icon(Icons.folder_outlined),
-            selectedIcon: Icon(Icons.folder),
-            label: 'Projetos',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.edit_note_outlined),
-            selectedIcon: Icon(Icons.edit_note),
-            label: 'Anotações',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person),
-            label: 'Perfil',
-          ),
-        ],
+        ),
       ),
     );
   }

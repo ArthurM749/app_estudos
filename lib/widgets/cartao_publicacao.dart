@@ -105,8 +105,16 @@ class CartaoPublicacao extends StatelessWidget {
                     ),
                     if (aoExcluir != null)
                       PopupMenuButton<String>(
-                        tooltip: 'Mais opções',
-                        icon: Icon(Icons.more_vert, color: tokens.iconeSuave),
+                        // Evita o OverlayPortal do Tooltip neste item de lista.
+                        // O Flutter tem um bug confirmado de MouseTracker quando
+                        // um Tooltip de item em ListView é mantido vivo durante
+                        // uma rolagem rápida com o mouse sobre o botão.
+                        tooltip: '',
+                        icon: Icon(
+                          Icons.more_vert,
+                          semanticLabel: 'Mais opções',
+                          color: tokens.iconeSuave,
+                        ),
                         onSelected: (_) => aoExcluir!(),
                         itemBuilder: (_) => const [
                           PopupMenuItem(
@@ -131,8 +139,12 @@ class CartaoPublicacao extends StatelessWidget {
                     ),
                     child: Row(
                       children: [
-                        Icon(iconeDaPublicacao(publicacao.tipo, publicacao.metaConquistaId),
-                            color: tokens.emblemaIcone, size: 24),
+                        Icon(
+                          iconeDaPublicacao(
+                              publicacao.tipo, publicacao.metaConquistaId),
+                          color: tokens.emblemaIcone,
+                          size: 24,
+                        ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Column(

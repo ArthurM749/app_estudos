@@ -9,8 +9,15 @@ import 'projeto_detalhe_screen.dart';
 
 class ProjetosScreen extends StatelessWidget {
   final VoidCallback? aoTocarConfiguracoes;
+  final bool mostrarCabecalho;
+  final bool mostrarBotaoCriar;
 
-  const ProjetosScreen({super.key, this.aoTocarConfiguracoes});
+  const ProjetosScreen({
+    super.key,
+    this.aoTocarConfiguracoes,
+    this.mostrarCabecalho = true,
+    this.mostrarBotaoCriar = true,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -18,10 +25,11 @@ class ProjetosScreen extends StatelessWidget {
       body: SafeArea(
         child: Column(
           children: [
-            CabecalhoDaAba(
-              titulo: 'Projetos',
-              aoTocarConfiguracoes: aoTocarConfiguracoes,
-            ),
+            if (mostrarCabecalho)
+              CabecalhoDaAba(
+                titulo: 'Projetos',
+                aoTocarConfiguracoes: aoTocarConfiguracoes,
+              ),
             Expanded(
               child: Consumer<AppState>(
                 builder: (context, appState, _) {
@@ -36,7 +44,7 @@ class ProjetosScreen extends StatelessWidget {
                       child: Padding(
                         padding: const EdgeInsets.all(24),
                         child: Text(
-                          'Nenhum projeto ainda. Toque no + para criar o primeiro.',
+                          'Nenhum projeto ainda. Use o botão + para criar o primeiro.',
                           textAlign: TextAlign.center,
                           style: Theme.of(context).textTheme.bodyMedium,
                         ),
@@ -53,8 +61,9 @@ class ProjetosScreen extends StatelessWidget {
                       return Card(
                         margin: const EdgeInsets.only(bottom: 12),
                         child: ListTile(
-                          leading:
-                              CircleAvatar(backgroundColor: Color(projeto.cor)),
+                          leading: CircleAvatar(
+                            backgroundColor: Color(projeto.cor),
+                          ),
                           title: Text(projeto.nome),
                           subtitle: Padding(
                             padding: const EdgeInsets.only(top: 8, right: 8),
@@ -72,12 +81,13 @@ class ProjetosScreen extends StatelessWidget {
                               Text('$progresso%'),
                               IconButton(
                                 icon: const Icon(Icons.edit_outlined, size: 20),
-                                onPressed: () => abrirDialogoProjeto(context,
-                                    projetoExistente: projeto),
+                                onPressed: () => abrirDialogoProjeto(
+                                  context,
+                                  projetoExistente: projeto,
+                                ),
                               ),
                               IconButton(
-                                icon:
-                                    const Icon(Icons.delete_outline, size: 20),
+                                icon: const Icon(Icons.delete_outline, size: 20),
                                 onPressed: () =>
                                     confirmarExclusaoProjeto(context, projeto),
                               ),
@@ -87,7 +97,8 @@ class ProjetosScreen extends StatelessWidget {
                             Navigator.of(context).push(
                               MaterialPageRoute(
                                 builder: (_) => ProjetoDetalheScreen(
-                                    projetoId: projeto.id!),
+                                  projetoId: projeto.id!,
+                                ),
                               ),
                             );
                           },
@@ -101,10 +112,12 @@ class ProjetosScreen extends StatelessWidget {
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => abrirDialogoProjeto(context),
-        child: const Icon(Icons.add),
-      ),
+      floatingActionButton: mostrarBotaoCriar
+          ? FloatingActionButton(
+              onPressed: () => abrirDialogoProjeto(context),
+              child: const Icon(Icons.add),
+            )
+          : null,
     );
   }
 }

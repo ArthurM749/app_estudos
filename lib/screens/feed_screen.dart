@@ -30,7 +30,6 @@ class _FeedScreenState extends State<FeedScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _abas = TabController(length: 2, vsync: this);
 
-  // Pesquisa de publicações por título: troca as abas por um campo + resultados.
   final _buscaController = TextEditingController();
   Timer? _espera;
   bool _buscando = false;
@@ -38,7 +37,6 @@ class _FeedScreenState extends State<FeedScreen>
   @override
   void initState() {
     super.initState();
-    // Só começa a conversar com a internet quando a pessoa abre o feed.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final social = context.read<SocialState>();
@@ -72,7 +70,6 @@ class _FeedScreenState extends State<FeedScreen>
     setState(() => _buscando = false);
   }
 
-  /// Espera a pessoa parar de digitar um instante antes de consultar a internet.
   void _aoDigitar(String texto) {
     _espera?.cancel();
     _espera = Timer(const Duration(milliseconds: 450), () {
@@ -105,7 +102,7 @@ class _FeedScreenState extends State<FeedScreen>
                         autofocus: true,
                         textInputAction: TextInputAction.search,
                         onChanged: (t) {
-                          setState(() {}); // atualiza o botão de limpar
+                          setState(() {});
                           _aoDigitar(t);
                         },
                         onSubmitted: (t) =>
@@ -250,7 +247,6 @@ class _ListaDoFeed extends StatelessWidget {
           );
         }
 
-        // Pesquisa começando com "@": mostra pessoas em vez de publicações.
         if (aba == AbaFeed.busca && social.buscandoPessoas) {
           if (social.pessoasBusca.isEmpty) {
             return _Mensagem(
