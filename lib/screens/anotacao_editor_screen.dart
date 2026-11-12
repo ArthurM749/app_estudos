@@ -2,9 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../data/app_state.dart';
+import '../data/auth_service.dart';
+import '../data/database_helper.dart';
 import '../data/regras_pontos.dart';
+import '../data/social_state.dart';
 import '../models/evento_pontos.dart';
 import '../models/item.dart';
+import '../theme/app_cores.dart';
 
 class AnotacaoEditorScreen extends StatefulWidget {
   final int? projetoIdInicial;
@@ -21,8 +25,11 @@ class AnotacaoEditorScreen extends StatefulWidget {
 }
 
 class _AnotacaoEditorScreenState extends State<AnotacaoEditorScreen> {
-  late Visibilidade _visibilidade =
-      widget.itemExistente?.visibilidade ?? Visibilidade.privada;
+  /// A anotação já gravada no aparelho. Fica nula só até o primeiro "salvar" de
+  /// uma anotação nova; depois disso, salvar de novo atualiza em vez de criar
+  /// outra (importante quando publicar falha e a pessoa tenta de novo).
+  late Item? _item = widget.itemExistente;
+
   late int? _projetoIdSelecionado =
       widget.itemExistente?.projetoId ?? widget.projetoIdInicial;
   late final _tituloController =
@@ -32,7 +39,13 @@ class _AnotacaoEditorScreenState extends State<AnotacaoEditorScreen> {
   bool _salvando = false;
   bool _excluindo = false;
 
-  bool get _editando => widget.itemExistente != null;
+  bool get _editando => _item != null;
+
+  /// O que a pessoa escolheu (público ou privado). O envio para a nuvem pode
+  /// ainda estar na fila — ver [_aguardandoEnvio].
+  bool get _publicada => _item?.querPublicada ?? false;
+  bool get _aguardandoEnvio => _item?.aguardandoEnvio ?? false;
+  bool get _ocupado => _salvando || _excluindo;
 
   @override
   void dispose() {
@@ -41,47 +54,165 @@ class _AnotacaoEditorScreenState extends State<AnotacaoEditorScreen> {
     super.dispose();
   }
 
-  Future<void> _salvar() async {
+  void _aviso(String texto) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(texto)));
+  }
+
+  /// Salva no aparelho (sempre, mesmo sem internet) e registra o que a pessoa
+  /// quer: `true` publicar, `false` tornar privada, `null` manter como está.
+  /// O envio para a nuvem é feito em seguida; se não houver internet, fica na
+  /// fila e o app reenvia sozinho quando a conexão voltar.
+  Future<void> _salvar({bool? publicar}) async {
     final titulo = _tituloController.text.trim();
-    if (titulo.isEmpty || _salvando || _excluindo) return;
+    final conteudo = _conteudoController.text.trim();
+    if (_ocupado) return;
+    if (titulo.isEmpty) {
+      _aviso('Dê um título para a anotação.');
+      return;
+    }
+    final alvoPublicada = publicar ?? _publicada;
+    if (alvoPublicada && conteudo.isEmpty) {
+      _aviso('Escreva o conteúdo antes de publicar.');
+      return;
+    }
+    if (publicar == true && AuthService.instance.usuarioAtual == null) {
+      _aviso('Entre em uma conta para publicar anotações.');
+      return;
+    }
 
     setState(() => _salvando = true);
     final appState = context.read<AppState>();
+    final social = context.read<SocialState>();
+    final messenger = ScaffoldMessenger.of(context);
 
-    if (_editando) {
-      final atual = widget.itemExistente!;
-
-      final atualizado = Item(
-        id: atual.id,
-        projetoId: _projetoIdSelecionado,
-        tipo: atual.tipo,
-        titulo: titulo,
-        conteudo: _conteudoController.text.trim(),
-        concluido: atual.concluido,
-        visibilidade: _visibilidade,
-        criadoEm: atual.criadoEm,
-      );
-      await appState.atualizarItem(atualizado);
+    // 1) Aparelho: grava o texto e a intenção. Nada depende de internet.
+    final atual = _item;
+    final novo = Item(
+      id: atual?.id,
+      projetoId: _projetoIdSelecionado,
+      tipo: TipoItem.anotacao,
+      titulo: titulo,
+      conteudo: conteudo,
+      concluido: atual?.concluido ?? false,
+      visibilidade:
+          alvoPublicada ? Visibilidade.publica : Visibilidade.privada,
+      criadoEm: atual?.criadoEm ?? DateTime.now(),
+      publicacaoId: atual?.publicacaoId,
+      // Texto de uma anotação já publicada mudou: precisa ser reenviado.
+      syncPendente: alvoPublicada && atual?.publicacaoId != null,
+    );
+    if (atual != null) {
+      await appState.atualizarItem(novo);
+      _item = novo;
     } else {
-      await appState.criarItem(
-        projetoId: _projetoIdSelecionado,
+      final criado = await appState.criarItem(
+        projetoId: novo.projetoId,
         tipo: TipoItem.anotacao,
         titulo: titulo,
-        conteudo: _conteudoController.text.trim(),
-        visibilidade: _visibilidade,
+        conteudo: conteudo,
+        visibilidade: novo.visibilidade,
       );
+      _item = criado;
     }
 
+    // 2) Nuvem: tenta agora; o que não der fica na fila.
+    final precisaEnviar = _item!.aguardandoEnvio;
+    String? mensagemFinal;
+    if (precisaEnviar) {
+      final resultado = await social.processarFila();
+      final restante = await DatabaseHelper.instance
+          .listarAnotacoesPendentes()
+          .then((l) => l.any((i) => i.id == _item!.id));
+      if (resultado.erro != null) {
+        if (!mounted) return;
+        setState(() => _salvando = false);
+        _aviso('Salvo no aparelho, mas a comunidade recusou: ${resultado.erro}');
+        return;
+      }
+      if (restante) {
+        mensagemFinal = AuthService.instance.usuarioAtual == null
+            ? 'Salvo no aparelho. Será enviado quando você entrar na conta.'
+            : 'Salvo no aparelho. Será enviado quando houver internet.';
+      } else {
+        mensagemFinal =
+            alvoPublicada ? 'Anotação publicada.' : 'Anotação agora é privada.';
+      }
+    }
+
+    if (mensagemFinal != null) {
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(mensagemFinal)));
+    }
     if (mounted) Navigator.of(context).pop(true);
   }
 
+  Future<void> _confirmarPublicar() async {
+    final confirmou = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Publicar anotação?'),
+        content: const Text(
+          'Ela vai aparecer no feed e no seu perfil, e qualquer pessoa do '
+          'app poderá ler, curtir e comentar. Você pode torná-la privada de '
+          'novo quando quiser.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Publicar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmou == true) await _salvar(publicar: true);
+  }
+
+  Future<void> _confirmarTornarPrivada() async {
+    final confirmou = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Tornar privada?'),
+        content: const Text(
+          'A publicação sai do feed e do seu perfil (junto com as curtidas e '
+          'comentários dela). A anotação continua salva no seu aparelho.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Tornar privada'),
+          ),
+        ],
+      ),
+    );
+    if (confirmou == true) await _salvar(publicar: false);
+  }
+
   Future<void> _excluir() async {
-    if (_salvando || _excluindo) return;
+    if (_ocupado) return;
+    final publicada = _publicada;
     final confirmou = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Excluir anotação?'),
-        content: const Text('Isso não pode ser desfeito.'),
+        content: Text(
+          publicada
+              ? 'Isso apaga a anotação do aparelho e também a publicação no '
+                  'feed (se estiver sem internet, a publicação sai quando '
+                  'voltar). Não pode ser desfeito.'
+              : 'Isso não pode ser desfeito.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
@@ -97,7 +228,12 @@ class _AnotacaoEditorScreenState extends State<AnotacaoEditorScreen> {
     if (confirmou != true || !mounted) return;
 
     setState(() => _excluindo = true);
-    await context.read<AppState>().excluirItem(widget.itemExistente!);
+    // A anotação some do aparelho na hora; se estava publicada, a retirada da
+    // nuvem acontece agora ou assim que houver internet.
+    await context.read<SocialState>().excluirAnotacao(
+          _item!,
+          context.read<AppState>(),
+        );
     if (mounted) Navigator.of(context).pop(true);
   }
 
@@ -113,6 +249,7 @@ class _AnotacaoEditorScreenState extends State<AnotacaoEditorScreen> {
         actions: [
           if (_editando)
             IconButton(
+              tooltip: 'Excluir',
               icon: _excluindo
                   ? const SizedBox(
                       width: 20,
@@ -120,9 +257,10 @@ class _AnotacaoEditorScreenState extends State<AnotacaoEditorScreen> {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.delete_outline),
-              onPressed: (_salvando || _excluindo) ? null : _excluir,
+              onPressed: _ocupado ? null : _excluir,
             ),
           IconButton(
+            tooltip: 'Salvar',
             icon: _salvando
                 ? const SizedBox(
                     width: 20,
@@ -130,7 +268,7 @@ class _AnotacaoEditorScreenState extends State<AnotacaoEditorScreen> {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Icon(Icons.check),
-            onPressed: (_salvando || _excluindo) ? null : _salvar,
+            onPressed: _ocupado ? null : () => _salvar(),
           ),
         ],
       ),
@@ -139,6 +277,14 @@ class _AnotacaoEditorScreenState extends State<AnotacaoEditorScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            _BarraDePublicacao(
+              publicada: _publicada,
+              aguardandoEnvio: _aguardandoEnvio,
+              ocupado: _ocupado,
+              aoPublicar: _confirmarPublicar,
+              aoTornarPrivada: _confirmarTornarPrivada,
+            ),
+            const SizedBox(height: 16),
             TextField(
               controller: _tituloController,
               autofocus: !_editando,
@@ -192,22 +338,7 @@ class _AnotacaoEditorScreenState extends State<AnotacaoEditorScreen> {
                 textAlignVertical: TextAlignVertical.top,
               ),
             ),
-            const SizedBox(height: 16),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Anotação pública'),
-              subtitle: const Text(
-                'No futuro, anotações públicas poderão ser vistas e '
-                'curtidas no feed.',
-              ),
-              value: _visibilidade == Visibilidade.publica,
-              onChanged: (ativo) {
-                setState(() {
-                  _visibilidade =
-                      ativo ? Visibilidade.publica : Visibilidade.privada;
-                });
-              },
-            ),
+            const SizedBox(height: 8),
             if (!_editando)
               Padding(
                 padding: const EdgeInsets.only(top: 4),
@@ -220,6 +351,85 @@ class _AnotacaoEditorScreenState extends State<AnotacaoEditorScreen> {
               ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+
+/// Faixa no topo do editor: mostra se a anotação é privada ou publicada e
+/// oferece o botão para mudar (sempre com confirmação).
+class _BarraDePublicacao extends StatelessWidget {
+  final bool publicada;
+  final bool aguardandoEnvio;
+  final bool ocupado;
+  final VoidCallback aoPublicar;
+  final VoidCallback aoTornarPrivada;
+
+  const _BarraDePublicacao({
+    required this.publicada,
+    required this.aguardandoEnvio,
+    required this.ocupado,
+    required this.aoPublicar,
+    required this.aoTornarPrivada,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.coresApp;
+    final tema = Theme.of(context).textTheme;
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+      decoration: BoxDecoration(
+        color: tokens.cartao,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: tokens.cartaoBorda),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            aguardandoEnvio
+                ? Icons.cloud_upload_outlined
+                : (publicada ? Icons.public : Icons.lock_outline),
+            size: 20,
+            color: publicada ? tokens.iconeDestaque : tokens.iconeSuave,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  publicada ? 'Publicada' : 'Privada',
+                  style: tema.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  publicada
+                      ? (aguardandoEnvio
+                          ? 'Aguardando internet para aparecer no feed.'
+                          : 'Aparece no feed e no seu perfil.')
+                      : (aguardandoEnvio
+                          ? 'Aguardando internet para sair do feed.'
+                          : 'Só você vê esta anotação.'),
+                  style:
+                      tema.bodySmall?.copyWith(color: tokens.textoSecundario),
+                ),
+              ],
+            ),
+          ),
+          if (publicada)
+            TextButton(
+              onPressed: ocupado ? null : aoTornarPrivada,
+              child: const Text('Tornar privada'),
+            )
+          else
+            FilledButton.tonalIcon(
+              onPressed: ocupado ? null : aoPublicar,
+              icon: const Icon(Icons.public, size: 18),
+              label: const Text('Publicar'),
+            ),
+        ],
       ),
     );
   }

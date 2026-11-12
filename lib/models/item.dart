@@ -14,6 +14,14 @@ class Item {
   final Visibilidade visibilidade;
   final DateTime criadoEm;
 
+  /// Id da publicação no Supabase quando a anotação está publicada. Nulo =
+  /// privada (a anotação nunca saiu do aparelho).
+  final String? publicacaoId;
+
+  /// Anotação já publicada que foi editada e ainda não teve o texto novo
+  /// enviado (sem internet na hora de salvar). O app reenvia sozinho depois.
+  final bool syncPendente;
+
   const Item({
     this.id,
     this.projetoId,
@@ -23,7 +31,22 @@ class Item {
     this.concluido = false,
     this.visibilidade = Visibilidade.privada,
     required this.criadoEm,
+    this.publicacaoId,
+    this.syncPendente = false,
   });
+
+  /// A pessoa quer esta anotação pública (a "intenção"). Se o envio ainda não
+  /// aconteceu, [aguardandoEnvio] fica verdadeiro.
+  bool get querPublicada => visibilidade == Visibilidade.publica;
+
+  bool get estaPublicada => publicacaoId != null;
+
+  /// A nuvem ainda não reflete o que a pessoa escolheu: publicar, atualizar o
+  /// texto ou retirar. É a "fila de saída" das anotações.
+  bool get aguardandoEnvio =>
+      tipo == TipoItem.anotacao &&
+      ((querPublicada && (publicacaoId == null || syncPendente)) ||
+          (!querPublicada && publicacaoId != null));
 
   Item copyWith({
     int? id,
@@ -34,6 +57,9 @@ class Item {
     bool? concluido,
     Visibilidade? visibilidade,
     DateTime? criadoEm,
+    String? publicacaoId,
+    bool limparPublicacaoId = false,
+    bool? syncPendente,
   }) {
     return Item(
       id: id ?? this.id,
@@ -44,6 +70,9 @@ class Item {
       concluido: concluido ?? this.concluido,
       visibilidade: visibilidade ?? this.visibilidade,
       criadoEm: criadoEm ?? this.criadoEm,
+      publicacaoId:
+          limparPublicacaoId ? null : (publicacaoId ?? this.publicacaoId),
+      syncPendente: syncPendente ?? this.syncPendente,
     );
   }
 
@@ -57,6 +86,8 @@ class Item {
       'concluido': concluido ? 1 : 0,
       'visibilidade': visibilidade.name,
       'criado_em': criadoEm.toIso8601String(),
+      'publicacao_id': publicacaoId,
+      'sync_pendente': syncPendente ? 1 : 0,
     };
   }
 
@@ -70,6 +101,8 @@ class Item {
       concluido: (map['concluido'] as int) == 1,
       visibilidade: Visibilidade.values.byName(map['visibilidade'] as String),
       criadoEm: DateTime.parse(map['criado_em'] as String),
+      publicacaoId: map['publicacao_id'] as String?,
+      syncPendente: (map['sync_pendente'] as int? ?? 0) == 1,
     );
   }
 }

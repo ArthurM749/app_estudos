@@ -6,12 +6,16 @@ class CabecalhoDaAba extends StatelessWidget {
   final Widget? leading;
   final VoidCallback? aoTocarConfiguracoes;
 
+  /// Botões extras ao lado da engrenagem (ex.: busca de pessoas no feed).
+  final List<Widget> acoes;
+
   const CabecalhoDaAba({
     super.key,
     required this.titulo,
     this.subtitulo,
     this.leading,
     this.aoTocarConfiguracoes,
+    this.acoes = const [],
   });
 
   @override
@@ -48,6 +52,7 @@ class CabecalhoDaAba extends StatelessWidget {
               ],
             ),
           ),
+          ...acoes,
           IconButton(
             icon: const Icon(Icons.settings_outlined),
             onPressed: aoTocarConfiguracoes,

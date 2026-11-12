@@ -1,0 +1,21 @@
+# Roda a análise estática e os testes a cada push/PR, para erros de compilação
+# aparecerem antes de chegar na máquina de outra pessoa do grupo.
+name: Flutter
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test

@@ -38,3 +38,11 @@ String formatarDataCurta(DateTime data) {
 String formatarMesAno(DateTime data) {
   return '${_mesesPorExtenso[data.month - 1]} de ${data.year}';
 }
+
+/// "09/11/2026 · 20:55", no fuso do aparelho (o banco guarda em UTC).
+String formatarDataHora(DateTime data) {
+  final local = data.toLocal();
+  final hora = local.hour.toString().padLeft(2, '0');
+  final minuto = local.minute.toString().padLeft(2, '0');
+  return '${formatarDataCurta(local)} · $hora:$minuto';
+}
