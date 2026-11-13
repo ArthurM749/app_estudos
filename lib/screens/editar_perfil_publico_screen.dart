@@ -11,6 +11,7 @@ import '../data/social_state.dart';
 import '../models/conquista.dart';
 import '../models/perfil_social.dart';
 import '../theme/app_cores.dart';
+import '../utils/icones_conquistas.dart';
 import '../utils/mensagens.dart';
 import '../widgets/avatar_usuario.dart';
 import '../widgets/seletor_de_cor.dart';
@@ -290,10 +291,6 @@ class _EditarPerfilPublicoScreenState extends State<EditarPerfilPublicoScreen> {
         .bodySmall
         ?.copyWith(color: tokens.textoSecundario);
 
-    final liberadas = conquistasDisponiveis
-        .where((c) => app.conquistasDesbloqueadas.contains(c.id))
-        .toList();
-
     return Form(
       key: _formKey,
       child: ListView(
@@ -431,40 +428,45 @@ class _EditarPerfilPublicoScreenState extends State<EditarPerfilPublicoScreen> {
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             title: const Text('Conquistas em destaque'),
+            subtitle: const Text('Mostrar no seu perfil as que você escolher'),
             value: _mostrarConquistas,
             onChanged: (v) => setState(() => _mostrarConquistas = v),
           ),
-          if (_mostrarConquistas) ...[
-            const SizedBox(height: 4),
-            if (liberadas.isEmpty)
-              Text('Você ainda não desbloqueou conquistas.', style: legenda)
-            else ...[
-              Text(
-                'Escolha até $_maximoConquistasDestaque para destacar:',
-                style: legenda,
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (final Conquista c in liberadas)
-                    FilterChip(
-                      label: Text(c.nome),
-                      selected: _conquistasDestaque.contains(c.id),
-                      onSelected: (marcou) => setState(() {
-                        if (!marcou) {
-                          _conquistasDestaque.remove(c.id);
-                        } else if (_conquistasDestaque.length <
-                            _maximoConquistasDestaque) {
-                          _conquistasDestaque.add(c.id);
-                        }
-                      }),
-                    ),
-                ],
-              ),
+          // A escolha fica sempre à vista: quem ainda não ligou o interruptor
+          // também consegue escolher (e ao escolher, o interruptor liga).
+          const SizedBox(height: 4),
+          Text(
+            'Toque para destacar (${_conquistasDestaque.where(app.conquistasDesbloqueadas.contains).length}'
+            '/$_maximoConquistasDestaque). As que têm cadeado ainda não foram '
+            'desbloqueadas.',
+            style: legenda,
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final Conquista c in conquistasDisponiveis)
+                _ChipConquista(
+                  conquista: c,
+                  desbloqueada: app.conquistasDesbloqueadas.contains(c.id),
+                  destacada: _conquistasDestaque.contains(c.id),
+                  aoTocar: () => setState(() {
+                    if (_conquistasDestaque.contains(c.id)) {
+                      _conquistasDestaque.remove(c.id);
+                    } else if (_conquistasDestaque.length >=
+                        _maximoConquistasDestaque) {
+                      mostrarMensagem(context,
+                          'Você pode destacar até $_maximoConquistasDestaque conquistas.');
+                    } else {
+                      _conquistasDestaque.add(c.id);
+                      _mostrarConquistas = true;
+                    }
+                  }),
+                ),
             ],
-          ],
+          ),
+          const SizedBox(height: 8),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             title: const Text('Projetos escolhidos'),
@@ -505,6 +507,93 @@ class _EditarPerfilPublicoScreenState extends State<EditarPerfilPublicoScreen> {
                 : const Text('Salvar'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Conquista na lista de destaque. Usa as cores das conquistas (fundo claro com
+/// texto preto no tema claro; fundo escuro com texto branco no escuro) quando
+/// está destacada, e fica apagada com cadeado enquanto não for desbloqueada.
+class _ChipConquista extends StatelessWidget {
+  final Conquista conquista;
+  final bool desbloqueada;
+  final bool destacada;
+  final VoidCallback aoTocar;
+
+  const _ChipConquista({
+    required this.conquista,
+    required this.desbloqueada,
+    required this.destacada,
+    required this.aoTocar,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.coresApp;
+
+    final Color fundo;
+    final Color texto;
+    final Color icone;
+    if (!desbloqueada) {
+      fundo = tokens.conquistaBloqueadaFundo;
+      texto = tokens.conquistaBloqueadaTexto;
+      icone = tokens.conquistaBloqueadaTexto;
+    } else if (destacada) {
+      fundo = tokens.conquistaFundo;
+      texto = tokens.conquistaTexto;
+      icone = tokens.conquistaIcone;
+    } else {
+      fundo = tokens.chipFundo;
+      texto = tokens.textoPrincipal;
+      icone = tokens.textoSecundario;
+    }
+
+    return Semantics(
+      button: true,
+      enabled: desbloqueada,
+      selected: destacada,
+      label: '${conquista.nome}. ${conquista.descricao}',
+      excludeSemantics: true,
+      child: Tooltip(
+        message: conquista.descricao,
+        child: Material(
+          color: fundo,
+          shape: StadiumBorder(
+            side: BorderSide(
+              color: destacada ? tokens.conquistaIcone : tokens.chipBorda,
+              width: destacada ? 1.5 : 1,
+            ),
+          ),
+          child: InkWell(
+            customBorder: const StadiumBorder(),
+            onTap: desbloqueada ? aoTocar : null,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    desbloqueada
+                        ? iconeDaConquista(conquista.id)
+                        : Icons.lock_outline,
+                    size: 18,
+                    color: icone,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    conquista.nome,
+                    style: TextStyle(
+                      color: texto,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

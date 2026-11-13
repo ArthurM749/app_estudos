@@ -205,7 +205,7 @@ class AppCores {
     bordaForte: Color(0xFFB0A8A0),
     
     // Alto contraste garantido: Fundo escuro (#365673) com texto Branco
-    botaoPrimarioFundo: AppPalette.graphite, 
+    botaoPrimarioFundo: Color.fromARGB(255, 25, 50, 73), 
     botaoPrimarioTexto: Color(0xFFFFFFFF),
     botaoDesabilitadoFundo: Color(0xFFDCD6D0),
     botaoDesabilitadoTexto: AppPalette.lightMuted,
@@ -273,9 +273,10 @@ class AppCores {
     perigoSobre: Color(0xFFFFFFFF),
     sucesso: Color(0xFF429867),
     
-    conquistaFundo: Color.fromARGB(255, 231, 194, 114),
+    // Fundo dourado claro com texto preto (contraste alto no tema claro).
+    conquistaFundo: Color.fromARGB(255, 238, 215, 169),
     conquistaIcone: Color.fromARGB(255, 209, 145, 7),
-    conquistaTexto: Color.fromARGB(255, 48, 47, 47),
+    conquistaTexto: Color(0xFF000000),
     conquistaBloqueadaFundo: AppPalette.lightCard,
     conquistaBloqueadaIcone: AppPalette.lightMuted,
     conquistaBloqueadaTexto: AppPalette.lightMuted,
@@ -310,9 +311,10 @@ class AppCores {
     textoSuave: AppPalette.darkMuted,
     bordaForte: Color(0xFF3F3F3F),
     
-    // Contraste: Fundo Azul (#204370) com Ícone/Texto Branco
-    botaoPrimarioFundo: AppPalette.slateBlue,
-    botaoPrimarioTexto: Color(0xFFFFFFFF),
+    // Botão primário claro (#FCFCFC) no tema escuro: o texto/ícone precisa ser
+    // escuro, senão branco sobre quase branco some.
+    botaoPrimarioFundo: Color.fromARGB(255, 252, 252, 252),
+    botaoPrimarioTexto: Color(0xFF1A1A1A),
     botaoDesabilitadoFundo: Color(0xFF1E1E1E),
     botaoDesabilitadoTexto: Color(0xFF5A5A5A),
     botaoSecundarioTexto: AppPalette.darkText,
@@ -379,9 +381,10 @@ class AppCores {
     perigoSobre: Color(0xFFFFFFFF),
     sucesso: Color(0xFF429867),
     
-    conquistaFundo: Color.fromARGB(255, 216, 194, 166),
+    // Fundo escuro (dourado queimado) com texto branco; o ícone continua amarelo.
+    conquistaFundo: Color(0xFF3A3020),
     conquistaIcone: Color.fromARGB(255, 207, 161, 9),
-    conquistaTexto: Color.fromARGB(255, 59, 59, 59),
+    conquistaTexto: Color(0xFFFFFFFF),
     conquistaBloqueadaFundo: AppPalette.darkSurface,
     conquistaBloqueadaIcone: Color(0xFF2C2C2C),
     conquistaBloqueadaTexto: AppPalette.darkMuted,

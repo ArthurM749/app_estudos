@@ -141,6 +141,16 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  /// Soma ao total deste aparelho os pontos que a conta já tinha na nuvem
+  /// (ganhos em outro celular). Só sobe: nunca diminui o que já existe aqui.
+  Future<void> aplicarPontosDaNuvem(int totalDaNuvem) async {
+    final atual = await _db.pontosTotais();
+    if (totalDaNuvem <= atual) return;
+    await _db.registrarAjusteDaNuvem(totalDaNuvem - atual);
+    await _recarregarPontosEConquistas();
+    notifyListeners();
+  }
+
   Future<void> apagarTudo() async {
     try {
       await AuthService.instance.sair();

@@ -17,6 +17,13 @@ class SocialException implements Exception {
   String toString() => mensagem;
 }
 
+/// Pontos totais da conta na nuvem + data/hora do ponto mais recente.
+class PontosDaNuvem {
+  final int total;
+  final DateTime? em;
+  const PontosDaNuvem({required this.total, this.em});
+}
+
 /// Todas as chamadas ao Supabase da parte social ficam aqui, no mesmo estilo do
 /// AuthService: telas e estado não montam consulta nenhuma. Reaproveita o
 /// cliente que o `Supabase.initialize` do main.dart já criou (e, com ele, a
@@ -153,6 +160,7 @@ class SocialService {
   /// Envia os números do app (que moram no SQLite) para a tabela privada.
   /// Quem os enxerga é decidido depois, pela função perfil_publico.
   Future<void> atualizarEstatisticas({
+    DateTime? pontosEm,
     required int pontosTotais,
     required int nivel,
     required int sequenciaDias,
@@ -164,6 +172,8 @@ class SocialService {
       {
         'usuario_id': _meuIdObrigatorio,
         'pontos_totais': pontosTotais,
+        // Data/hora do ponto mais recente (base da comparação entre aparelhos).
+        if (pontosEm != null) 'pontos_em': pontosEm.toUtc().toIso8601String(),
         'nivel': nivel,
         'sequencia_dias': sequenciaDias,
         'total_anotacoes': totalAnotacoes,
@@ -172,6 +182,22 @@ class SocialService {
         'atualizado_em': DateTime.now().toUtc().toIso8601String(),
       },
       onConflict: 'usuario_id',
+    );
+  }
+
+  /// Total de pontos da conta guardado na nuvem e a data/hora do ponto mais
+  /// recente. Nulo se a conta ainda não enviou nada.
+  Future<PontosDaNuvem?> obterPontosDaNuvem() async {
+    final linha = await _client
+        .from('perfis_estatisticas')
+        .select('pontos_totais, pontos_em')
+        .eq('usuario_id', _meuIdObrigatorio)
+        .maybeSingle();
+    if (linha == null) return null;
+    final emTexto = linha['pontos_em'] as String?;
+    return PontosDaNuvem(
+      total: (linha['pontos_totais'] as num).toInt(),
+      em: emTexto == null ? null : DateTime.parse(emTexto),
     );
   }
 

@@ -507,6 +507,33 @@ class DatabaseHelper {
     return (total as int?) ?? 0;
   }
 
+  /// Data/hora do ponto mais recente GANHO neste aparelho (ignora os ajustes
+  /// recebidos da nuvem). Serve para comparar com a data do ponto na nuvem.
+  Future<DateTime?> ultimoPontoEm() async {
+    final db = await database;
+    final resultado = await db.rawQuery(
+      'SELECT MAX(data) as ultima FROM eventos_pontos WHERE tipo != ?',
+      [TipoAcao.ajusteNuvem.name],
+    );
+    final texto = resultado.first['ultima'] as String?;
+    return texto == null ? null : DateTime.parse(texto);
+  }
+
+  /// Registra os pontos que vieram da nuvem. A data fica bem no passado de
+  /// propósito: o total da conta sobe, mas o gráfico semanal, "pontos hoje" e
+  /// a sequência de dias não são mexidos (só o total é sincronizado).
+  Future<void> registrarAjusteDaNuvem(int pontos) async {
+    if (pontos <= 0) return;
+    final db = await database;
+    await db.insert('eventos_pontos', {
+      'tipo': TipoAcao.ajusteNuvem.name,
+      'pontos': pontos,
+      'data': DateTime(2000).toIso8601String(),
+      // Referência única por ajuste (o índice não aceita repetir tipo+referência).
+      'referencia': 'nuvem:${DateTime.now().microsecondsSinceEpoch}',
+    });
+  }
+
   Future<int> pontosTotais() async {
     final db = await database;
     final resultado =

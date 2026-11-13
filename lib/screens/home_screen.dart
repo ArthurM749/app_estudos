@@ -298,7 +298,11 @@ class _CartaoSequenciaEPontosHoje extends StatelessWidget {
           children: [
             Expanded(
               child: _ValorDoCartao(
-                icone: Icons.local_fire_department,
+                icone: const _IconeEmoji(
+                  emoji: '🔥',
+                  alternativa: Icons.local_fire_department,
+                  corAlternativa: Color(0xFFF59E0B),
+                ),
                 valor: '$sequenciaDias',
                 rotulo: sequenciaDias == 1 ? 'dia seguido' : 'dias seguidos',
                 corTexto: cores.onSurface,
@@ -308,7 +312,10 @@ class _CartaoSequenciaEPontosHoje extends StatelessWidget {
                 width: 1, height: 36, color: cores.outline.withOpacity(0.45)),
             Expanded(
               child: _ValorDoCartao(
-                icone: Icons.bolt,
+                icone: const _IconeEmoji(
+                  emoji: '⚡',
+                  alternativa: Icons.bolt,
+                ),
                 valor: '$pontosHoje',
                 rotulo: 'pontos hoje',
                 corTexto: cores.onSurface,
@@ -321,8 +328,56 @@ class _CartaoSequenciaEPontosHoje extends StatelessWidget {
   }
 }
 
+/// Emoji no lugar do ícone do Material. O Flutter não avisa quando o aparelho
+/// não tem o glifo, então a troca para o ícone [alternativa] é uma chave
+/// manual: basta pôr [usarEmoji] em false para voltar aos ícones de antes.
+/// (Android, iOS, Windows e web trazem fonte de emoji; na prática carrega.)
+class _IconeEmoji extends StatelessWidget {
+  static const bool usarEmoji = true;
+
+  final String emoji;
+  final IconData alternativa;
+
+  /// Cor do ícone alternativo; nulo = a cor de destaque do tema.
+  final Color? corAlternativa;
+
+  const _IconeEmoji({
+    required this.emoji,
+    required this.alternativa,
+    this.corAlternativa,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (!usarEmoji) {
+      return Icon(
+        alternativa,
+        color: corAlternativa ?? Theme.of(context).colorScheme.tertiary,
+      );
+    }
+    return SizedBox(
+      // Mesma altura do Icon (24), para os dois cartões ficarem alinhados.
+      height: 24,
+      child: Center(
+        child: Text(
+          emoji,
+          style: const TextStyle(
+            fontSize: 20,
+            height: 1.0,
+            fontFamilyFallback: [
+              'Apple Color Emoji',
+              'Noto Color Emoji',
+              'Segoe UI Emoji',
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _ValorDoCartao extends StatelessWidget {
-  final IconData icone;
+  final Widget icone;
   final String valor;
   final String rotulo;
   final Color corTexto;
@@ -338,7 +393,7 @@ class _ValorDoCartao extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Icon(icone, color: Theme.of(context).colorScheme.tertiary),
+        icone,
         const SizedBox(height: 4),
         Text(
           valor,

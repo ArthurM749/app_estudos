@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../data/app_state.dart';
 import '../data/auth_service.dart';
 import '../data/social_state.dart';
 import '../widgets/dialogo_projeto.dart';
@@ -38,15 +39,29 @@ class _NavegacaoPrincipalState extends State<NavegacaoPrincipal>
 
   Timer? _relogioDaFila;
 
+  // Pontos: quando o total muda, a nuvem é atualizada logo depois (em vez de
+  // esperar a pessoa abrir o perfil ou o feed). O pequeno atraso junta várias
+  // ações seguidas num envio só.
+  Timer? _esperaSincronizarPontos;
+  int? _ultimoTotalDePontos;
+  late final AppState _app;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
 
+    _app = context.read<AppState>();
+    _ultimoTotalDePontos = _app.pontosTotais;
+    _app.addListener(_aoMudarAppState);
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || AuthService.instance.usuarioAtual == null) return;
       context.read<SocialState>().carregarMeuPerfil().catchError((_) {});
       _enviarPendencias();
+      // Ao entrar (ou abrir o app) iguala os pontos com a nuvem, para o total
+      // aparecer igual em todos os aparelhos da conta.
+      _sincronizarPontos(forcar: true);
     });
 
     // Preserva o reenvio automático das ações feitas offline.
@@ -56,6 +71,8 @@ class _NavegacaoPrincipalState extends State<NavegacaoPrincipal>
 
   @override
   void dispose() {
+    _app.removeListener(_aoMudarAppState);
+    _esperaSincronizarPontos?.cancel();
     _relogioDaFila?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
@@ -63,7 +80,10 @@ class _NavegacaoPrincipalState extends State<NavegacaoPrincipal>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState estado) {
-    if (estado == AppLifecycleState.resumed) _enviarPendencias();
+    if (estado == AppLifecycleState.resumed) {
+      _enviarPendencias();
+      _sincronizarPontos(forcar: true);
+    }
   }
 
   void _enviarPendencias() {
@@ -71,6 +91,28 @@ class _NavegacaoPrincipalState extends State<NavegacaoPrincipal>
     context.read<SocialState>().processarFila().catchError((_) {
       return const ResultadoFila();
     });
+    // Rede de segurança: se algum envio de pontos falhou, tenta de novo (a
+    // sincronização já tem um intervalo mínimo próprio, então não pesa).
+    _sincronizarPontos();
+  }
+
+  void _aoMudarAppState() {
+    final total = _app.pontosTotais;
+    if (total == _ultimoTotalDePontos) return;
+    _ultimoTotalDePontos = total;
+    _esperaSincronizarPontos?.cancel();
+    _esperaSincronizarPontos = Timer(
+      const Duration(seconds: 3),
+      () => _sincronizarPontos(forcar: true),
+    );
+  }
+
+  void _sincronizarPontos({bool forcar = false}) {
+    if (!mounted || AuthService.instance.usuarioAtual == null) return;
+    context
+        .read<SocialState>()
+        .sincronizar(_app, forcar: forcar)
+        .catchError((_) {});
   }
 
   void _irPara(int aba) {

@@ -428,6 +428,7 @@ class SocialState extends ChangeNotifier {
       await _servico.garantirPerfil(nome: app.nomeUsuario ?? 'Estudante');
 
       final banco = DatabaseHelper.instance;
+      final pontosEm = await _reconciliarPontos(app, banco);
       final anotacoes = await banco.contarItens(tipo: TipoItem.anotacao);
       final tarefas =
           await banco.contarItens(tipo: TipoItem.tarefa, concluido: true);
@@ -439,6 +440,7 @@ class SocialState extends ChangeNotifier {
       totalProjetosConcluidos = projetosConcluidos;
 
       await _servico.atualizarEstatisticas(
+        pontosEm: pontosEm,
         pontosTotais: app.pontosTotais,
         nivel: app.nivel,
         sequenciaDias: app.sequenciaDias,
@@ -455,6 +457,47 @@ class SocialState extends ChangeNotifier {
 
     sincronizando = false;
     notifyListeners();
+  }
+
+  /// Iguala o total de pontos da conta entre aparelhos, comparando a data/hora
+  /// do ponto mais recente daqui com a da nuvem:
+  ///  * aparelho mais recente  -> a nuvem recebe o total do aparelho;
+  ///  * nuvem mais recente     -> o aparelho recebe o total da nuvem.
+  /// Pontos só aumentam, então há uma trava: o lado com MENOS pontos nunca
+  /// sobrescreve o lado com mais (evita perder pontos se dois aparelhos
+  /// ganharam pontos sem internet). Só o total é sincronizado, não o semanal.
+  /// Devolve a data/hora do ponto mais recente da conta, para gravar na nuvem.
+  Future<DateTime?> _reconciliarPontos(
+      AppState app, DatabaseHelper banco) async {
+    final nuvem = await _servico.obterPontosDaNuvem();
+    final localEm = await banco.ultimoPontoEm();
+    final localTotal = await banco.pontosTotais();
+
+    if (nuvem == null) return localEm;
+
+    final nuvemEm = nuvem.em;
+    bool baixar;
+    if (localEm != null && nuvemEm != null) {
+      final comparacao = localEm.toUtc().compareTo(nuvemEm.toUtc());
+      baixar = comparacao < 0 || (comparacao == 0 && nuvem.total > localTotal);
+    } else {
+      // Sem data de um dos lados (conta antiga ou aparelho sem pontos): vale
+      // quem tem mais pontos.
+      baixar = nuvem.total > localTotal;
+    }
+
+    // Trava: nunca trocar um total maior por um menor.
+    if (baixar && nuvem.total < localTotal) baixar = false;
+    if (!baixar && localTotal < nuvem.total) baixar = true;
+
+    if (baixar) {
+      await app.aplicarPontosDaNuvem(nuvem.total);
+      // A data da conta passa a ser a mais recente das duas.
+      if (localEm == null) return nuvemEm;
+      if (nuvemEm == null) return localEm;
+      return localEm.toUtc().isAfter(nuvemEm.toUtc()) ? localEm : nuvemEm;
+    }
+    return localEm ?? nuvemEm;
   }
 
   /// Envia os pontos por dia da semana atual e da anterior (a anterior cobre

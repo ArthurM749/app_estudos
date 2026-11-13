@@ -3,6 +3,10 @@ enum TipoAcao {
   criarAnotacao,
   concluirTarefa,
   concluirProjeto,
+
+  /// Pontos que a conta já tinha na nuvem (ganhos em outro aparelho) e que este
+  /// aparelho recebeu ao sincronizar. Só entra no total; não é uma ação.
+  ajusteNuvem,
 }
 
 class EventoDePontos {
