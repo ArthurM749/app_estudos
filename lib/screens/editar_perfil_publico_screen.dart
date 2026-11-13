@@ -60,6 +60,7 @@ class _EditarPerfilPublicoScreenState extends State<EditarPerfilPublicoScreen> {
   bool _mostrarEstatisticas = false;
   bool _mostrarConquistas = false;
   bool _mostrarProjetos = false;
+  bool _mostrarGraficoSemana = true;
   Set<String> _conquistasDestaque = {};
   Set<int> _projetosEscolhidos = {};
 
@@ -111,6 +112,7 @@ class _EditarPerfilPublicoScreenState extends State<EditarPerfilPublicoScreen> {
         _mostrarEstatisticas = perfil.mostrarEstatisticas;
         _mostrarConquistas = perfil.mostrarConquistas;
         _mostrarProjetos = perfil.mostrarProjetos;
+        _mostrarGraficoSemana = perfil.mostrarGraficoSemana;
         _conquistasDestaque = perfil.conquistasDestaque.toSet();
         _projetosEscolhidos = {...social.projetosPublicados};
         _carregando = false;
@@ -184,6 +186,7 @@ class _EditarPerfilPublicoScreenState extends State<EditarPerfilPublicoScreen> {
       mostrarEstatisticas: _mostrarEstatisticas,
       mostrarConquistas: _mostrarConquistas,
       mostrarProjetos: _mostrarProjetos,
+      mostrarGraficoSemana: _mostrarGraficoSemana,
       conquistasDestaque: destaque,
     );
 
@@ -393,9 +396,9 @@ class _EditarPerfilPublicoScreenState extends State<EditarPerfilPublicoScreen> {
           const TituloSecao('O que os outros podem ver'),
           const SizedBox(height: 4),
           Text(
-            'Tudo começa desligado. Seu nome e sua descrição são sempre '
-            'públicos; o resto só aparece se você ligar. Tarefas e anotações '
-            'nunca são enviadas.',
+            'Quase tudo começa desligado (só o gráfico da semana vem ligado). '
+            'Seu nome e sua descrição são sempre públicos; o resto só aparece '
+            'se você ligar. Tarefas e anotações nunca são enviadas.',
             style: legenda,
           ),
           SwitchListTile(
@@ -403,6 +406,13 @@ class _EditarPerfilPublicoScreenState extends State<EditarPerfilPublicoScreen> {
             title: const Text('Pontos e nível'),
             value: _mostrarPontos,
             onChanged: (v) => setState(() => _mostrarPontos = v),
+          ),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Gráfico de pontos da semana'),
+            subtitle: const Text('Pequeno gráfico de segunda a domingo'),
+            value: _mostrarGraficoSemana,
+            onChanged: (v) => setState(() => _mostrarGraficoSemana = v),
           ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,

@@ -137,6 +137,9 @@ class PerfilEditavel {
   final bool mostrarConquistas;
   final bool mostrarProjetos;
 
+  /// Gráfico de pontos da semana no perfil. Diferente dos outros, começa LIGADO.
+  final bool mostrarGraficoSemana;
+
   final List<String> conquistasDestaque;
 
   const PerfilEditavel({
@@ -150,6 +153,7 @@ class PerfilEditavel {
     this.mostrarEstatisticas = false,
     this.mostrarConquistas = false,
     this.mostrarProjetos = false,
+    this.mostrarGraficoSemana = true,
     this.conquistasDestaque = const [],
   });
 
@@ -166,6 +170,7 @@ class PerfilEditavel {
       mostrarEstatisticas: mostrarEstatisticas,
       mostrarConquistas: mostrarConquistas,
       mostrarProjetos: mostrarProjetos,
+      mostrarGraficoSemana: mostrarGraficoSemana,
       conquistasDestaque: conquistasDestaque,
     );
   }
@@ -176,7 +181,8 @@ class PerfilEditavel {
       !mostrarSequencia &&
       !mostrarEstatisticas &&
       !mostrarConquistas &&
-      !mostrarProjetos;
+      !mostrarProjetos &&
+      !mostrarGraficoSemana;
 
   factory PerfilEditavel.fromMaps(
     Map<String, dynamic> perfil,
@@ -194,6 +200,8 @@ class PerfilEditavel {
       mostrarEstatisticas: (perfil['mostrar_estatisticas'] as bool?) ?? false,
       mostrarConquistas: (perfil['mostrar_conquistas'] as bool?) ?? false,
       mostrarProjetos: (perfil['mostrar_projetos'] as bool?) ?? false,
+      mostrarGraficoSemana:
+          (perfil['mostrar_grafico_semana'] as bool?) ?? true,
       conquistasDestaque: (destaque ?? const []).map((e) => e.toString()).toList(),
     );
   }

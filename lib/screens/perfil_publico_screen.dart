@@ -14,6 +14,7 @@ import '../utils/mensagens.dart';
 import '../widgets/avatar_usuario.dart';
 import '../widgets/cabecalho_da_aba.dart';
 import '../widgets/cartao_publicacao.dart';
+import '../widgets/grafico_semana_mini.dart';
 import '../widgets/titulo_secao.dart';
 import 'editar_perfil_publico_screen.dart';
 import 'lista_pessoas_screen.dart';
@@ -48,6 +49,10 @@ class _PerfilPublicoScreenState extends State<PerfilPublicoScreen> {
   PerfilPublico? _perfil;
   List<ProjetoPublico> _projetos = [];
   List<Publicacao> _publicacoes = [];
+
+  /// Pontos de segunda a domingo vindos da nuvem. Nulo = a pessoa desligou o
+  /// gráfico (ou ainda não há dados).
+  List<int>? _graficoSemana;
   bool _carregando = true;
   bool _alternandoSeguir = false;
   String? _erro;
@@ -77,12 +82,17 @@ class _PerfilPublicoScreenState extends State<PerfilPublicoScreen> {
         servico.perfilPublico(widget.usuarioId),
         servico.projetosPublicosDe(widget.usuarioId),
         servico.listarPublicacoes(autorId: widget.usuarioId, limite: 10),
+        // O gráfico é um extra: se falhar, o resto do perfil abre normalmente.
+        servico
+            .graficoSemanaDe(widget.usuarioId, _segundaDestaSemana())
+            .then<List<int>?>((v) => v, onError: (_) => null),
       ]);
       if (!mounted) return;
       setState(() {
         _perfil = resultados[0] as PerfilPublico?;
         _projetos = resultados[1] as List<ProjetoPublico>;
         _publicacoes = resultados[2] as List<Publicacao>;
+        _graficoSemana = resultados[3] as List<int>?;
         _carregando = false;
       });
     } catch (e) {
@@ -92,6 +102,13 @@ class _PerfilPublicoScreenState extends State<PerfilPublicoScreen> {
         _carregando = false;
       });
     }
+  }
+
+  /// Segunda-feira da semana atual (a semana do gráfico vai de segunda a domingo).
+  DateTime _segundaDestaSemana() {
+    final agora = DateTime.now();
+    final hoje = DateTime(agora.year, agora.month, agora.day);
+    return hoje.subtract(Duration(days: agora.weekday - 1));
   }
 
   Future<void> _alternarSeguir() async {
@@ -305,6 +322,12 @@ class _PerfilPublicoScreenState extends State<PerfilPublicoScreen> {
           pontosPrivado: meu != null && !meu.mostrarPontos,
           sequenciaPrivada: meu != null && !meu.mostrarSequencia,
         ),
+        ..._graficoDaSemana(
+          context,
+          // No meu perfil usa os números do aparelho (valem mesmo offline).
+          pontos: meu != null ? app.pontosPorDia : _graficoSemana,
+          privado: meu != null && !meu.mostrarGraficoSemana,
+        ),
         ..._estatisticas(
           context,
           anotacoes: anotacoes,
@@ -400,6 +423,23 @@ class _PerfilPublicoScreenState extends State<PerfilPublicoScreen> {
     return [
       const SizedBox(height: 24),
       Row(children: [for (final i in itens) Expanded(child: i)]),
+    ];
+  }
+
+  List<Widget> _graficoDaSemana(
+    BuildContext context, {
+    required List<int>? pontos,
+    required bool privado,
+  }) {
+    if (pontos == null || pontos.length != 7) return [];
+    return [
+      const SizedBox(height: 24),
+      _TituloComCadeado('Pontos da semana', privado: privado),
+      const SizedBox(height: 8),
+      GraficoSemanaMini(
+        pontosPorDia: pontos,
+        indiceHoje: DateTime.now().weekday - 1,
+      ),
     ];
   }
 

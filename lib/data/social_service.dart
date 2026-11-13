@@ -100,6 +100,7 @@ class SocialService {
       'mostrar_estatisticas': perfil.mostrarEstatisticas,
       'mostrar_conquistas': perfil.mostrarConquistas,
       'mostrar_projetos': perfil.mostrarProjetos,
+      'mostrar_grafico_semana': perfil.mostrarGraficoSemana,
     }).eq('id', id);
 
     // As conquistas destacadas ficam na tabela privada: quem vê é decidido
@@ -172,6 +173,52 @@ class SocialService {
       },
       onConflict: 'usuario_id',
     );
+  }
+
+  /// "2026-11-13": o banco guarda o dia como `date`, sem fuso nem hora.
+  static String _diaParaTexto(DateTime dia) {
+    String dois(int n) => n.toString().padLeft(2, '0');
+    return '${dia.year.toString().padLeft(4, '0')}-${dois(dia.month)}-${dois(dia.day)}';
+  }
+
+  /// Guarda na nuvem os pontos de cada dia ([pontos] = valores a partir de
+  /// [primeiroDia], um por dia). Dias antigos não são apagados: só o gráfico
+  /// olha para a semana atual, a pontuação fica salva.
+  Future<void> enviarPontosDiarios(
+    DateTime primeiroDia,
+    List<int> pontos,
+  ) async {
+    if (pontos.isEmpty) return;
+    final id = _meuIdObrigatorio;
+    final agora = DateTime.now().toUtc().toIso8601String();
+    await _client.from('pontos_diarios').upsert(
+      [
+        for (var i = 0; i < pontos.length; i++)
+          {
+            'usuario_id': id,
+            'dia': _diaParaTexto(
+              DateTime(primeiroDia.year, primeiroDia.month, primeiroDia.day + i),
+            ),
+            'pontos': pontos[i],
+            'atualizado_em': agora,
+          },
+      ],
+      onConflict: 'usuario_id,dia',
+    );
+  }
+
+  /// Pontos de segunda a domingo de outra pessoa. Devolve null quando ela
+  /// desligou o gráfico no perfil (a função do banco não devolve nada).
+  Future<List<int>?> graficoSemanaDe(String usuarioId, DateTime segunda) async {
+    final resposta = await _client.rpc('grafico_semana', params: {
+      'p_id': usuarioId,
+      'p_segunda': _diaParaTexto(segunda),
+    });
+    final linhas = resposta as List<dynamic>;
+    if (linhas.length != 7) return null;
+    return [
+      for (final linha in linhas) ((linha as Map)['pontos'] as num).toInt(),
+    ];
   }
 
   Future<PerfilPublico?> perfilPublico(String usuarioId) async {

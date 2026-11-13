@@ -447,6 +447,7 @@ class SocialState extends ChangeNotifier {
         totalProjetosConcluidos: projetosConcluidos,
       );
       await _sincronizarProjetosPublicados(app);
+      await _sincronizarPontosDiarios(banco);
       _ultimaSincronizacao = DateTime.now();
     } catch (e) {
       erroSincronizacao = SocialService.traduzirErro(e);
@@ -454,6 +455,20 @@ class SocialState extends ChangeNotifier {
 
     sincronizando = false;
     notifyListeners();
+  }
+
+  /// Envia os pontos por dia da semana atual e da anterior (a anterior cobre
+  /// quem só abre o app na segunda e ainda tinha pontos de domingo por enviar).
+  /// O que vale para o gráfico é a semana atual; o resto fica como histórico.
+  Future<void> _sincronizarPontosDiarios(DatabaseHelper banco) async {
+    final agora = DateTime.now();
+    final hoje = DateTime(agora.year, agora.month, agora.day);
+    final segunda = hoje.subtract(Duration(days: agora.weekday - 1));
+    final segundaAnterior = DateTime(segunda.year, segunda.month, segunda.day - 7);
+
+    final anterior = await banco.pontosPorDiaDaSemana(segundaAnterior);
+    final atual = await banco.pontosPorDiaDaSemana(segunda);
+    await _servico.enviarPontosDiarios(segundaAnterior, [...anterior, ...atual]);
   }
 
   Future<void> _sincronizarProjetosPublicados(AppState app) async {
