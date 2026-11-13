@@ -14,7 +14,17 @@ enum _FiltroProjeto { todas, semProjeto, projeto }
 class AnotacoesScreen extends StatefulWidget {
   final VoidCallback? aoTocarConfiguracoes;
 
-  const AnotacoesScreen({super.key, this.aoTocarConfiguracoes});
+  /// Dentro da seção Estudos o cabeçalho e o botão de criar ficam por conta da
+  /// própria seção (título "Estudos" e botão + central).
+  final bool mostrarCabecalho;
+  final bool mostrarBotaoCriar;
+
+  const AnotacoesScreen({
+    super.key,
+    this.aoTocarConfiguracoes,
+    this.mostrarCabecalho = true,
+    this.mostrarBotaoCriar = true,
+  });
 
   @override
   State<AnotacoesScreen> createState() => _AnotacoesScreenState();
@@ -102,10 +112,11 @@ class _AnotacoesScreenState extends State<AnotacoesScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            CabecalhoDaAba(
-              titulo: 'Anotações',
-              aoTocarConfiguracoes: widget.aoTocarConfiguracoes,
-            ),
+            if (widget.mostrarCabecalho)
+              CabecalhoDaAba(
+                titulo: 'Anotações',
+                aoTocarConfiguracoes: widget.aoTocarConfiguracoes,
+              ),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
               child: TextField(
@@ -135,30 +146,30 @@ class _AnotacoesScreenState extends State<AnotacoesScreen> {
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 children: [
-                  ChoiceChip(
-                    label: const Text('Todas'),
-                    selected: _filtro == _FiltroProjeto.todas,
-                    onSelected: (_) =>
+                  _FiltroChip(
+                    rotulo: 'Todas',
+                    selecionado: _filtro == _FiltroProjeto.todas,
+                    aoTocar: () =>
                         setState(() => _filtro = _FiltroProjeto.todas),
                   ),
                   const SizedBox(width: 8),
-                  ChoiceChip(
-                    label: const Text('Sem projeto'),
-                    selected: _filtro == _FiltroProjeto.semProjeto,
-                    onSelected: (_) =>
+                  _FiltroChip(
+                    rotulo: 'Sem projeto',
+                    selecionado: _filtro == _FiltroProjeto.semProjeto,
+                    aoTocar: () =>
                         setState(() => _filtro = _FiltroProjeto.semProjeto),
                   ),
                   for (final projeto in projetos) ...[
                     const SizedBox(width: 8),
-                    ChoiceChip(
+                    _FiltroChip(
                       avatar: CircleAvatar(
                         backgroundColor: Color(projeto.cor),
                         radius: 6,
                       ),
-                      label: Text(projeto.nome),
-                      selected: _filtro == _FiltroProjeto.projeto &&
+                      rotulo: projeto.nome,
+                      selecionado: _filtro == _FiltroProjeto.projeto &&
                           _projetoFiltradoId == projeto.id,
-                      onSelected: (_) => setState(() {
+                      aoTocar: () => setState(() {
                         _filtro = _FiltroProjeto.projeto;
                         _projetoFiltradoId = projeto.id;
                       }),
@@ -260,10 +271,54 @@ class _AnotacoesScreenState extends State<AnotacoesScreen> {
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _novaAnotacao(context),
-        icon: const Icon(Icons.add),
-        label: const Text('Nova anotação'),
+      floatingActionButton: widget.mostrarBotaoCriar
+          ? FloatingActionButton.extended(
+              onPressed: () => _novaAnotacao(context),
+              icon: const Icon(Icons.add),
+              label: const Text('Nova anotação'),
+            )
+          : null,
+    );
+  }
+}
+
+/// Filtro de anotações (Todas / Sem projeto / um projeto). As cores são
+/// definidas aqui, a partir dos tokens, em vez de depender só do tema de chips:
+/// texto bem escuro no tema claro e bem claro no tema escuro, sobre um fundo
+/// que se destaca da tela.
+class _FiltroChip extends StatelessWidget {
+  final String rotulo;
+  final bool selecionado;
+  final VoidCallback aoTocar;
+  final Widget? avatar;
+
+  const _FiltroChip({
+    required this.rotulo,
+    required this.selecionado,
+    required this.aoTocar,
+    this.avatar,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.coresApp;
+    final corTexto =
+        selecionado ? tokens.chipTextoSelecionado : tokens.textoPrincipal;
+
+    return ChoiceChip(
+      avatar: avatar,
+      label: Text(rotulo),
+      selected: selecionado,
+      onSelected: (_) => aoTocar(),
+      showCheckmark: false,
+      backgroundColor: tokens.chipFundo,
+      selectedColor: tokens.chipFundoSelecionado,
+      side: BorderSide(
+        color: selecionado ? tokens.chipTextoSelecionado : tokens.bordaForte,
+      ),
+      labelStyle: TextStyle(
+        color: corTexto,
+        fontWeight: selecionado ? FontWeight.w700 : FontWeight.w600,
       ),
     );
   }

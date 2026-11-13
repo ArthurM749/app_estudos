@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../widgets/cabecalho_da_aba.dart';
 import 'anotacoes_screen.dart';
 import 'projetos_screen.dart';
 
@@ -22,17 +23,9 @@ class EstudosScreen extends StatelessWidget {
         body: SafeArea(
           child: Column(
             children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 14, 20, 8),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'Estudos',
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
-                  ),
-                ),
+              CabecalhoDaAba(
+                titulo: 'Estudos',
+                aoTocarConfiguracoes: aoTocarConfiguracoes,
               ),
               TabBar(
                 tabs: const [
@@ -46,11 +39,15 @@ class EstudosScreen extends StatelessWidget {
               Expanded(
                 child: TabBarView(
                   children: [
+                    // Cabeçalho e botão de criar já são da seção Estudos e do +
+                    // central; as telas existentes são reaproveitadas como estão.
                     ProjetosScreen(
-                      aoTocarConfiguracoes: aoTocarConfiguracoes,
+                      mostrarCabecalho: false,
+                      mostrarBotaoCriar: false,
                     ),
                     AnotacoesScreen(
-                      aoTocarConfiguracoes: aoTocarConfiguracoes,
+                      mostrarCabecalho: false,
+                      mostrarBotaoCriar: false,
                     ),
                   ],
                 ),
