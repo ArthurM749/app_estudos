@@ -1,11 +1,11 @@
 {
-    "name": "app_estudos",
-    "short_name": "app_estudos",
+    "name": "QuestNoter",
+    "short_name": "QuestNoter",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "QuestNoter: estudos gamificados e anotações.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

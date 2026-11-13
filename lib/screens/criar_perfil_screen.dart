@@ -101,10 +101,22 @@ class _CriarPerfilScreenState extends State<CriarPerfilScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Icon(
-                      Icons.auto_stories_outlined,
-                      size: 56,
-                      color: Theme.of(context).colorScheme.primary,
+                    Center(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: Image.asset(
+                          'assets/imagens/logo_qn.png',
+                          width: 80,
+                          height: 80,
+                          fit: BoxFit.cover,
+                          // Se a imagem não carregar, volta ao ícone de antes.
+                          errorBuilder: (_, __, ___) => Icon(
+                            Icons.auto_stories_outlined,
+                            size: 56,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 16),
                     Text(

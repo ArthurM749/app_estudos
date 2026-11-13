@@ -2,7 +2,7 @@
     <!-- Sem isto o app de release não acessa a internet (login e feed). -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <application
-        android:label="app_estudos"
+        android:label="QuestNoter"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

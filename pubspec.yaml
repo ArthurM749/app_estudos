@@ -39,3 +39,7 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  # Logo do app (tela de login)
+  assets:
+    - assets/imagens/logo_qn.png
